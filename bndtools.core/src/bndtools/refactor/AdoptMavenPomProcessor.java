@@ -176,12 +176,12 @@ public class AdoptMavenPomProcessor extends RefactoringProcessor {
         XmlSearch elementSearch = new XmlSearch();
         LightweightElement packagingElem = elementSearch.searchElement(document, new String[] { "project", "packaging" });
         if (packagingElem == null) {
-            LightweightElement versionElem = elementSearch.searchElement(document, new String[] { "project", "version" });
-            if (versionElem == null)
+            LightweightElement previousSiblingElement = searchPreviousSiblingElementForInsertPackaging(document, elementSearch);
+            if (previousSiblingElement == null)
                 throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Invalid POM format", null));
 
-            int insertPoint = versionElem.getLocation().getClose().getEnd().getCharacterOffset();
-            String indentStr = getIndentFromTag(versionElem.getLocation().getOpen());
+            int insertPoint = previousSiblingElement.getLocation().getClose().getEnd().getCharacterOffset();
+            String indentStr = getIndentFromTag(previousSiblingElement.getLocation().getOpen());
             String insertionText = "\n" + indentStr + BUNDLE_PACKAGING_EDIT;
 
             result = new InsertEdit(insertPoint, insertionText);
@@ -192,6 +192,14 @@ public class AdoptMavenPomProcessor extends RefactoringProcessor {
             result = new ReplaceEdit(start, end - start, BUNDLE_PACKAGING_EDIT);
         }
         return result;
+    }
+
+    private LightweightElement searchPreviousSiblingElementForInsertPackaging(LightweightDocument document, XmlSearch elementSearch) {
+        LightweightElement foundElement = elementSearch.searchElement(document, new String[] { "project", "version" });
+        if (foundElement==null) {
+            foundElement = elementSearch.searchElement(document, new String[] { "project", "artifactId" });
+        }
+        return foundElement;
     }
 
     TextEdit generateBuildPluginEdit(LightweightDocument document) throws XMLStreamException, IOException {
