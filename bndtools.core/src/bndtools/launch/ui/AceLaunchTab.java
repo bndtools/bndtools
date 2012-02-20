@@ -12,7 +12,8 @@ public class AceLaunchTab extends GenericStackedLaunchTab {
     @Override
     protected ILaunchTabPiece[] createStack() {
         return new ILaunchTabPiece[] {
-                new ProjectLaunchTabPiece()
+                new ProjectLaunchTabPiece(),
+                new AceConfigLaunchTabPiece()
         };
     }
 

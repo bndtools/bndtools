@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarInputStream;
@@ -51,16 +50,20 @@ import bndtools.Plugin;
 public class AceLaunchDelegate extends LaunchConfigurationDelegate {
     private Project project;
     private AceClientWorkspace workspace;
-    private String m_aceUrl = "http://localhost:8080";
-    private String m_target = "default";
-    private String m_feature = "default";
-    private String m_distribution = "default";
+    private String m_aceUrl;
+    private String m_target;
+    private String m_feature;
+    private String m_distribution;
     private Artifact[] artifacts;
     private String[] resourceIds;
 
     public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor) throws CoreException {
         project = LaunchUtils.getBndProject(configuration);
-
+        m_aceUrl = configuration.getAttribute(LaunchConstants.ATTR_ACE_ADDRESS, LaunchConstants.DEFAULT_ACE_ADDRESS);
+        m_feature = configuration.getAttribute(LaunchConstants.ATTR_ACE_FEATURE, LaunchConstants.DEFAULT_ACE_FEATURE);
+        m_distribution = configuration.getAttribute(LaunchConstants.ATTR_ACE_DISTRIBUTION, LaunchConstants.DEFAULT_ACE_DISTRIBUTION);
+        m_target = configuration.getAttribute(LaunchConstants.ATTR_ACE_TARGET, LaunchConstants.DEFAULT_ACE_TARGET);
+        
         try {
             installBundles();
         } catch (Exception e) {
@@ -86,12 +89,9 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
     }
 
     private void processBundles() throws Exception, IOException, FileNotFoundException, AceClientException {
-
         for (Container bundle : project.getRunbundles()) {
             processJar(bundle);
-
         }
-
     }
 
     private Bundle parseManifest(File jar) {
@@ -124,7 +124,7 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
                 e.printStackTrace();
             }
         }
-        
+
         return null;
     }
 
@@ -133,8 +133,7 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         System.out.println("Name: " + jar.getBundleSymbolicName().replace(".jar", ""));
         System.out.println("Version: " + jar.getVersion());
         ArtifactBuilder artifactBuilder = new ArtifactBuilder().setUrl("file://" + jar.getFile().getAbsolutePath()).setMimeType("application/vnd.osgi.bundle")
-                .setBundleSymbolicName(jar.getBundleSymbolicName()).setBundleVersion(jar.getVersion())
-                .setName(jar.getBundleSymbolicName().replace(".jar", ""));
+                .setBundleSymbolicName(jar.getBundleSymbolicName()).setBundleVersion(jar.getVersion()).setName(jar.getBundleSymbolicName().replace(".jar", ""));
 
         boolean local = false;
 
@@ -342,53 +341,62 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         final IResourceChangeListener resourceListener = new IResourceChangeListener() {
             public void resourceChanged(IResourceChangeEvent event) {
                 try {
-                    final AtomicBoolean update = new AtomicBoolean(false);
 
-                    // Was the properties file (bnd.bnd or *.bndrun) included in
-                    // the delta?
-                    IResourceDelta propsDelta = event.getDelta().findMember(bndbndPath);
-                    if (propsDelta == null && targetResource.getType() == IResource.FILE)
-                        propsDelta = event.getDelta().findMember(targetResource.getFullPath());
-                    if (propsDelta != null) {
-                        if (propsDelta.getKind() == IResourceDelta.CHANGED) {
-                            update.set(true);
-                        }
-                    }
+                    if (event.getType() == IResourceChangeEvent.POST_CHANGE) {
+                        final AtomicBoolean update = new AtomicBoolean(false);
 
-                    // Check for bundles included in the launcher's runbundles
-                    // list
-                    if (!update.get()) {
-                        final Collection<Container> runBundleSet = project.getRunbundles();
-                        event.getDelta().accept(new IResourceDeltaVisitor() {
-                            public boolean visit(IResourceDelta delta) throws CoreException {
-                                // Short circuit if we have already found a
-                                // match
-                                if (update.get())
-                                    return false;
-
-                                IResource resource = delta.getResource();
-                                if (resource.getType() == IResource.FILE) {
-                                    boolean isRunBundle = runBundleSet.contains(resource.getLocation().toPortableString());
-                                    update.compareAndSet(false, isRunBundle);
-                                    return false;
-                                }
-
-                                // Recurse into containers
-                                return true;
+                        // Was the properties file (bnd.bnd or *.bndrun)
+                        // included in
+                        // the delta?
+                        IResourceDelta propsDelta = event.getDelta().findMember(bndbndPath);
+                        if (propsDelta == null && targetResource.getType() == IResource.FILE)
+                            propsDelta = event.getDelta().findMember(targetResource.getFullPath());
+                        if (propsDelta != null) {
+                            if (propsDelta.getKind() == IResourceDelta.CHANGED) {
+                                update.set(true);
                             }
-                        });
-                    }
+                        }
 
-                    // Was the target path included in the delta? This might
-                    // mean that sub-bundles have changed
-                    boolean targetPathChanged = event.getDelta().findMember(targetPath) != null;
-                    update.compareAndSet(false, targetPathChanged);
+                        // Check for bundles included in the launcher's
+                        // runbundles
+                        // list
+                        if (!update.get()) {
+                            final Collection<Container> runBundleSet = project.getRunbundles();
+                            event.getDelta().accept(new IResourceDeltaVisitor() {
+                                public boolean visit(IResourceDelta delta) throws CoreException {
+                                    // Short circuit if we have already found a
+                                    // match
+                                    if (update.get())
+                                        return false;
 
-                    if (update.get()) {
-                        project.forceRefresh();
-                        project.setChanged();
-                        processBundles();
-                        System.out.println("updating!");
+                                    IResource resource = delta.getResource();
+                                    if (resource.getType() == IResource.FILE) {
+                                        boolean isRunBundle = false; 
+                                        for(Container container : runBundleSet) {
+                                            if(container.getFile().getAbsolutePath().equals(resource.getLocation().toPortableString())) {
+                                                isRunBundle = true;
+                                            }
+                                        }
+                                        update.compareAndSet(false, isRunBundle);
+                                        return false;
+                                    }
+
+                                    // Recurse into containers
+                                    return true;
+                                }
+                            });
+                        }
+
+                        // Was the target path included in the delta? This might
+                        // mean that sub-bundles have changed
+                        boolean targetPathChanged = event.getDelta().findMember(targetPath) != null;
+                        update.compareAndSet(false, targetPathChanged);
+
+                        if (update.get()) {
+                            project.forceRefresh();
+                            project.setChanged();
+                            installBundles();
+                        } 
                     }
                 } catch (Exception e) {
                     IStatus status = new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error updating launch properties file.", e);
