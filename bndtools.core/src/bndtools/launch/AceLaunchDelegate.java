@@ -1,7 +1,14 @@
 package bndtools.launch;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 
 import org.amdatu.ace.client.AceClient;
 import org.amdatu.ace.client.AceClientException;
@@ -20,14 +27,26 @@ import org.amdatu.ace.client.model.Feature2DistributionBuilder;
 import org.amdatu.ace.client.model.FeatureBuilder;
 import org.amdatu.ace.client.model.Target;
 import org.amdatu.ace.client.model.TargetBuilder;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
+import org.eclipse.core.resources.IResourceDeltaVisitor;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.model.LaunchConfigurationDelegate;
 
 import aQute.bnd.build.Container;
 import aQute.bnd.build.Project;
+import bndtools.Central;
+import bndtools.Plugin;
 
 public class AceLaunchDelegate extends LaunchConfigurationDelegate {
     private Project project;
@@ -47,6 +66,8 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        registerLaunchPropertiesRegenerator(project, launch);
     }
 
     private void installBundles() throws Exception {
@@ -59,42 +80,102 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         artifacts = workspace.getResources(Artifact.class);
         resourceIds = workspace.getResourceIds(Artifact.class);
 
-        for (Container bundle : project.getRunbundles()) {
-             processJar(bundle);
-        }
+        processBundles();
 
         workspace.commit();
     }
 
-    private void processJar(Container jar) throws IOException, FileNotFoundException, AceClientException {
-        Artifact artifact = new ArtifactBuilder().setUrl(jar.getFile().getAbsolutePath()).setMimeType("application/vnd.osgi.bundle")
-                .setBundleSymbolicName(jar.getBundleSymbolicName()).setBundleVersion(jar.getVersion()).setName(jar.getBundleSymbolicName()).build();
+    private void processBundles() throws Exception, IOException, FileNotFoundException, AceClientException {
 
-        if (!artifactUrlExists(artifact) && !artifactVersionExists(artifact)) {
+        for (Container bundle : project.getRunbundles()) {
+            processJar(bundle);
+
+        }
+
+    }
+
+    private Bundle parseManifest(File jar) {
+        Bundle jarBundle = new Bundle();
+
+        Manifest bundleManifest = readManifestFromJar(jar);
+
+        jarBundle.name = bundleManifest.getMainAttributes().getValue("Bundle-SymbolicName");
+        jarBundle.version = bundleManifest.getMainAttributes().getValue("Bundle-Version");
+
+        return jarBundle;
+    }
+
+    private Manifest readManifestFromJar(File jar) {
+        JarInputStream jis = null;
+        try {
+            jis = new JarInputStream(new FileInputStream(jar));
+            Manifest bundleManifest = jis.getManifest();
+            if (bundleManifest == null) {
+                System.err.println("Not a valid manifest in: " + jar);
+            }
+
+            return bundleManifest;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                jis.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return null;
+    }
+
+    private void processJar(Container jar) throws IOException, FileNotFoundException, AceClientException {
+        System.out.println("Processing bundle: " + jar);
+        System.out.println("Name: " + jar.getBundleSymbolicName().replace(".jar", ""));
+        System.out.println("Version: " + jar.getVersion());
+        ArtifactBuilder artifactBuilder = new ArtifactBuilder().setUrl("file://" + jar.getFile().getAbsolutePath()).setMimeType("application/vnd.osgi.bundle")
+                .setBundleSymbolicName(jar.getBundleSymbolicName()).setBundleVersion(jar.getVersion())
+                .setName(jar.getBundleSymbolicName().replace(".jar", ""));
+
+        boolean local = false;
+
+        // TODO: this is a work around, why doesn't the jar get a version?
+        if (jar.getVersion().equals("project")) {
+            Bundle manifest = parseManifest(jar.getFile());
+            artifactBuilder.setBundleVersion(manifest.version);
+            artifactBuilder.setBundleSymbolicName(manifest.name);
+            artifactBuilder.setName(manifest.name);
+            local = true;
+        }
+
+        Artifact artifact = artifactBuilder.build();
+
+        System.out.println(artifact.getBundleVersion());
+
+        if (local || (!artifactUrlExists(artifact) && !artifactVersionExists(artifact))) {
             if (artifactBundleSymoblicNameExists(artifact)) {
 
                 workspace.deleteResource(Artifact.class, getResourceId(artifact));
+                System.out.println("deleting");
             }
 
-            //TODO: uploadArtifact(artifact);
+            // TODO: uploadArtifact(artifact);
             workspace.createResource(artifact);
 
             createArtifact2Feature(artifact);
         }
     }
-    
+
     private boolean artifactBundleSymoblicNameExists(Artifact artifact) {
         for (Artifact existingArtifact : artifacts) {
 
-            if (existingArtifact.getBundleSymbolicName() != null && existingArtifact.getBundleSymbolicName().equals(
-                    artifact.getBundleSymbolicName() )) {
+            if (existingArtifact.getBundleSymbolicName() != null && existingArtifact.getBundleSymbolicName().equals(artifact.getBundleSymbolicName())) {
                 return true;
             }
         }
 
         return false;
     }
-    
+
     private boolean artifactUrlExists(Artifact artifact) {
         for (Artifact existingArtifact : artifacts) {
             if (existingArtifact.getUrl().equals(artifact.getUrl())) {
@@ -104,12 +185,11 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
 
         return false;
     }
-    
+
     private String getResourceId(Artifact artifact) {
         for (String id : resourceIds) {
 
-            if (id.contains("Bundle-SymbolicName-"
-                    + artifact.getBundleSymbolicName() + "-Bundle-Version-")) {
+            if (id.contains("Bundle-SymbolicName-" + artifact.getBundleSymbolicName() + "-Bundle-Version-")) {
                 System.out.println(id);
                 return id;
             }
@@ -117,17 +197,14 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
 
         return null;
     }
-    
-    private boolean artifactVersionExists(Artifact artifact)
-            throws AceClientException {
+
+    private boolean artifactVersionExists(Artifact artifact) throws AceClientException {
         Artifact[] artifacts = workspace.getResources(Artifact.class);
         for (Artifact repoArtifact : artifacts) {
-            if (repoArtifact.getMimetype().equals("application/vnd.osgi.bundle") && 
-                    repoArtifact.getBundleSymbolicName().equals(
-                    artifact.getBundleSymbolicName())
-                    && repoArtifact.getBundleVersion().equals(
-                            artifact.getBundleVersion())) {
-                
+            if (repoArtifact.getMimetype().equals("application/vnd.osgi.bundle")
+                    && repoArtifact.getBundleSymbolicName().equals(artifact.getBundleSymbolicName())
+                    && repoArtifact.getBundleVersion().equals(artifact.getBundleVersion())) {
+
                 return true;
             }
         }
@@ -135,20 +212,19 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         return false;
     }
 
-    private void createArtifact2Feature(Artifact artifact)
-            throws AceClientException {
+    private void createArtifact2Feature(Artifact artifact) throws AceClientException {
         Artifact2Feature artifact2Feature = new Artifact2FeatureBuilder()
-                .setLeftEndpoint(
-                        "(&(Bundle-SymbolicName="
-                                + artifact.getBundleSymbolicName()
-                                + ")(Bundle-Version="
-                                + artifact.getBundleVersion() + "))")
-                .setRightEndpoint("(name=" + m_feature + ")")
-                .setAttribute("left", "*").setAttribute("right", "*").build();
+                .setLeftEndpoint("(&(Bundle-SymbolicName=" + artifact.getBundleSymbolicName() + ")(Bundle-Version=" + artifact.getBundleVersion() + "))")
+                .setRightEndpoint("(name=" + m_feature + ")").setAttribute("left", "*").setAttribute("right", "*").build();
 
-        workspace.createResource(artifact2Feature);
+        try {
+            workspace.createResource(artifact2Feature);
+        } catch (Exception ex) {
+            System.out.println("Failed to create artifact2feature");
+        }
+
     }
-    
+
     private void createDefaultFeature() throws AceClientException {
         if (!defaultFeatureExisists()) {
             Feature feature = new FeatureBuilder().setName(m_feature).build();
@@ -236,5 +312,103 @@ public class AceLaunchDelegate extends LaunchConfigurationDelegate {
         }
 
         return false;
+    }
+
+    /**
+     * Registers a resource listener with the project model file to update the
+     * launcher when the model or any of the run-bundles changes. The resource
+     * listener is automatically unregistered when the launched process
+     * terminates.
+     * 
+     * @param project
+     * @param launch
+     * @throws CoreException
+     */
+    private void registerLaunchPropertiesRegenerator(final Project project, final ILaunch launch) throws CoreException {
+        final IResource targetResource = LaunchUtils.getTargetResource(launch.getLaunchConfiguration());
+        final IPath bndbndPath;
+        try {
+            bndbndPath = Central.toPath(project.getPropertiesFile());
+        } catch (Exception e) {
+            throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error querying bnd.bnd file location", e));
+        }
+
+        final IPath targetPath;
+        try {
+            targetPath = Central.toPath(project.getTarget());
+        } catch (Exception e) {
+            throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error querying project output folder", e));
+        }
+        final IResourceChangeListener resourceListener = new IResourceChangeListener() {
+            public void resourceChanged(IResourceChangeEvent event) {
+                try {
+                    final AtomicBoolean update = new AtomicBoolean(false);
+
+                    // Was the properties file (bnd.bnd or *.bndrun) included in
+                    // the delta?
+                    IResourceDelta propsDelta = event.getDelta().findMember(bndbndPath);
+                    if (propsDelta == null && targetResource.getType() == IResource.FILE)
+                        propsDelta = event.getDelta().findMember(targetResource.getFullPath());
+                    if (propsDelta != null) {
+                        if (propsDelta.getKind() == IResourceDelta.CHANGED) {
+                            update.set(true);
+                        }
+                    }
+
+                    // Check for bundles included in the launcher's runbundles
+                    // list
+                    if (!update.get()) {
+                        final Collection<Container> runBundleSet = project.getRunbundles();
+                        event.getDelta().accept(new IResourceDeltaVisitor() {
+                            public boolean visit(IResourceDelta delta) throws CoreException {
+                                // Short circuit if we have already found a
+                                // match
+                                if (update.get())
+                                    return false;
+
+                                IResource resource = delta.getResource();
+                                if (resource.getType() == IResource.FILE) {
+                                    boolean isRunBundle = runBundleSet.contains(resource.getLocation().toPortableString());
+                                    update.compareAndSet(false, isRunBundle);
+                                    return false;
+                                }
+
+                                // Recurse into containers
+                                return true;
+                            }
+                        });
+                    }
+
+                    // Was the target path included in the delta? This might
+                    // mean that sub-bundles have changed
+                    boolean targetPathChanged = event.getDelta().findMember(targetPath) != null;
+                    update.compareAndSet(false, targetPathChanged);
+
+                    if (update.get()) {
+                        project.forceRefresh();
+                        project.setChanged();
+                        processBundles();
+                        System.out.println("updating!");
+                    }
+                } catch (Exception e) {
+                    IStatus status = new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error updating launch properties file.", e);
+                    Plugin.log(status);
+                }
+            }
+        };
+        ResourcesPlugin.getWorkspace().addResourceChangeListener(resourceListener);
+
+        // Register a listener for termination of the launched process
+        Runnable onTerminate = new Runnable() {
+            public void run() {
+                ResourcesPlugin.getWorkspace().removeResourceChangeListener(resourceListener);
+            }
+        };
+        DebugPlugin.getDefault().addDebugEventListener(new TerminationListener(launch, onTerminate));
+    }
+
+    class Bundle {
+        public String name;
+        public String version;
     }
 }
