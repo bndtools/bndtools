@@ -3,5 +3,12 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5"/>
 	<classpathentry kind="con" path="aQute.bnd.classpath.container"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bndtools.core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bndtools.diff"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bndtools.jareditor"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bndtools.release"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bndtools.repository.base"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.bndtools.embeddedrepo"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.osgi.impl.bundle.bindex"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
