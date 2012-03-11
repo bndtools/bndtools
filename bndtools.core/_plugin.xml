@@ -439,7 +439,7 @@
       <launchConfigurationType
          delegate="bndtools.launch.AceLaunchDelegate"
          id="bndtools.launch.ace"
-         modes="run, debug"
+         modes="run"
          name="ACE deployment"
          sourceLocatorId="org.bndtools.core.launch.BndDependencySourceLookupDirector"
          sourcePathComputerId="org.eclipse.jdt.launching.sourceLookup.javaSourcePathComputer"
@@ -537,6 +537,37 @@
             id="bndtools.launch.runShortcut"
             label="OSGi Run"
             modes="run, debug">
+         <contextualLaunch>
+            <enablement>
+               <with variable="selection">
+                  <count value="1"/>
+                  <iterate>
+                     <or>
+                        <!-- Java/Bnd Project -->
+                        <and>
+                           <test property="org.eclipse.jdt.launching.isContainer"/>
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="org.eclipse.jdt.core.javanature"/>
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="bndtools.core.bndnature"/>
+                        </and>
+                        
+                        <!-- bnd.bnd file -->
+                        <test property="org.eclipse.core.resources.name" value="bnd.bnd"/>
+                        
+                        <!-- *.bndrun file -->
+                        <test property="org.eclipse.core.resources.extension" value="bndrun"/>
+                     </or>
+                  </iterate>
+               </with>
+            </enablement>
+         </contextualLaunch>
+      </shortcut>
+      
+      <shortcut
+            class="bndtools.launch.AceRunShortcut"
+            icon="icons/bricks_run.png"
+            id="bndtools.launch.acerunShortcut"
+            label="ACE Run"
+            modes="run">
          <contextualLaunch>
             <enablement>
                <with variable="selection">
