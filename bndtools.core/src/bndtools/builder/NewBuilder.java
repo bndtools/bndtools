@@ -3,7 +3,9 @@ package bndtools.builder;
 import java.io.File;
 import java.io.FileFilter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,8 +34,12 @@ import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.IClasspathContainer;
+import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaModelMarker;
-import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import aQute.bnd.build.Project;
@@ -44,7 +50,10 @@ import bndtools.Central;
 import bndtools.Plugin;
 import bndtools.api.IValidator;
 import bndtools.classpath.BndContainerInitializer;
+import bndtools.preferences.BndPreferences;
 import bndtools.preferences.CompileErrorAction;
+import bndtools.preferences.EclipseClasspathPreference;
+import bndtools.utils.Predicate;
 
 public class NewBuilder extends IncrementalProjectBuilder {
 
@@ -62,12 +71,18 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
     private List<String> buildLog;
     private int logLevel = LOG_NONE;
+    private ScopedPreferenceStore projectPrefs;
 
     @Override
     protected IProject[] build(int kind, @SuppressWarnings("rawtypes") Map args, IProgressMonitor monitor) throws CoreException {
-        IPreferenceStore prefs = Plugin.getDefault().getPreferenceStore();
-        logLevel = prefs.getInt(Plugin.PREF_BUILD_LOGGING);
+        BndPreferences prefs = new BndPreferences();
+        logLevel = prefs.getBuildLogging();
+        projectPrefs = new ScopedPreferenceStore(new ProjectScope(getProject()), Plugin.PLUGIN_ID);
 
+        // Prepare build listeners
+        BuildListeners listeners = new BuildListeners();
+
+        // Prepare validations
         classpathErrors = new LinkedList<String>();
         validationResults = new MultiStatus(Plugin.PLUGIN_ID, 0, "Validation errors in bnd project", null);
         buildLog = new ArrayList<String>(5);
@@ -75,14 +90,24 @@ public class NewBuilder extends IncrementalProjectBuilder {
         // Initialise workspace OBR index (should only happen once)
         boolean builtAny = false;
 
+        // Get the initial project
+        IProject myProject = getProject();
+        listeners.fireBuildStarting(myProject);
+        Project model = null;
         try {
-            IProject myProject = getProject();
-            Project model = Workspace.getProject(myProject.getLocation().toFile());
-            if (model == null)
-                return null;
-            this.model = model;
+            model = Workspace.getProject(myProject.getLocation().toFile());
+        } catch (Exception e) {
+            clearBuildMarkers();
+            createBuildMarkers(Collections.singletonList(e.getMessage()), Collections.<String>emptyList());
+        }
+        if (model == null)
+            return null;
+        this.model = model;
 
-            model.clear(); // Clear errors and warnings
+        // Main build section
+        try {
+            // Clear errors and warnings
+            model.clear();
 
             // CASE 1: CNF changed
             if (isCnfChanged()) {
@@ -420,6 +445,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
      * @param force Whether to force bnd to build
      * @return Whether any files were built
      */
+    @SuppressWarnings("unchecked")
     private boolean rebuild(boolean force) throws Exception {
         clearBuildMarkers();
 
@@ -443,7 +469,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
             ScopedPreferenceStore store = new ScopedPreferenceStore(new ProjectScope(getProject()), Plugin.PLUGIN_ID);
             switch (CompileErrorAction.parse(store.getString(CompileErrorAction.PREFERENCE_KEY))) {
             case skip:
-                addBuildMarker("Will not build OSGi bundle(s) for project %s until classpath resolution problems are fixed.", IMarker.SEVERITY_ERROR);
+                addBuildMarker(String.format("Will not build OSGi bundle(s) for project %s until classpath resolution problems are fixed.", model.getName()), IMarker.SEVERITY_ERROR);
                 log(LOG_BASIC, "SKIPPING due to classpath resolution problem markers");
                 return false;
             case build:
@@ -469,6 +495,18 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
         // Clear errors & warnings before build
         model.clear();
+        
+        // Load Eclipse classpath containers
+        model.clearClasspath();
+        EclipseClasspathPreference classpathPref = EclipseClasspathPreference.parse(projectPrefs.getString(EclipseClasspathPreference.PREFERENCE_KEY));
+        if (classpathPref == EclipseClasspathPreference.expose) {
+            List<File> classpathFiles = new ArrayList<File>(20);
+            accumulateClasspath(classpathFiles, JavaCore.create(getProject()), false, new ClasspathContainerFilter());
+            for (File file : classpathFiles) {
+                log(LOG_FULL, "Adding Eclipse classpath entry %s", file.getAbsolutePath());
+                model.addClasspath(file);
+            }
+        }
 
         if (buildAction == Action.build) {
             // Build!
@@ -505,6 +543,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
         if (built.length > 0) {
             try {
                 Central.getWorkspaceObrProvider().replaceProjectFiles(model, built);
+                Central.getWorkspaceRepoProvider().replaceProjectFiles(model, built);
             } catch (Exception e) {
                 Plugin.logError("Error rebuilding workspace OBR index", e);
             }
@@ -562,7 +601,66 @@ public class NewBuilder extends IncrementalProjectBuilder {
         log(LOG_FULL, "returning depends-on list: %s", result);
         return result.toArray(new IProject[result.size()]);
     }
+    
+    private void accumulateClasspath(List<File> files, IJavaProject project, boolean exports, Predicate<IClasspathContainer>... containerFilters) throws JavaModelException {
+        if (exports) {
+            IPath outputPath = project.getOutputLocation();
+            files.add(getFileForPath(outputPath));
+        }
+        
+        IClasspathEntry[] entries = project.getRawClasspath();
+        List<IClasspathEntry> queue = new ArrayList<IClasspathEntry>(entries.length);
+        queue.addAll(Arrays.asList(entries));
 
+        while (!queue.isEmpty()) {
+            IClasspathEntry entry = queue.remove(0);
+            
+            if (exports && !entry.isExported())
+                continue;
+            
+            IPath path = entry.getPath();
+            
+            switch(entry.getEntryKind()) {
+            case IClasspathEntry.CPE_LIBRARY:
+                files.add(getFileForPath(path));
+                break;
+            case IClasspathEntry.CPE_VARIABLE:
+                IPath resolvedPath = JavaCore.getResolvedVariablePath(path);
+                files.add(getFileForPath(resolvedPath));
+                break;
+            case IClasspathEntry.CPE_SOURCE:
+                IPath outputLocation = entry.getOutputLocation();
+                if (exports && outputLocation != null)
+                    files.add(getFileForPath(outputLocation));
+                break;
+            case IClasspathEntry.CPE_CONTAINER:
+                IClasspathContainer container = JavaCore.getClasspathContainer(path, project);
+                boolean allow = true;
+                for (Predicate<IClasspathContainer> filter : containerFilters)
+                    if (!filter.select(container))
+                        allow = false;
+                if (allow)
+                    queue.addAll(Arrays.asList(container.getClasspathEntries()));
+                break;
+            case IClasspathEntry.CPE_PROJECT:
+                IProject targetProject = ResourcesPlugin.getWorkspace().getRoot().getProject(path.lastSegment());
+                IJavaProject targetJavaProject = JavaCore.create(targetProject);
+                accumulateClasspath(files, targetJavaProject, true, containerFilters);
+                break;
+            }
+        }
+    }
+    
+    private File getFileForPath(IPath path) {
+        File file;
+        IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
+        if (resource != null && resource.exists())
+            file = resource.getLocation().toFile();
+        else
+            file = path.toFile();
+        return file;
+    }
+    
     private boolean hasBlockingErrors() {
         try {
             if (containsError(getProject().findMarkers(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, true, IResource.DEPTH_INFINITE)))

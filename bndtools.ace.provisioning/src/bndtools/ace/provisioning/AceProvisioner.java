@@ -32,45 +32,56 @@ import org.amdatu.ace.client.model.Target;
 import org.amdatu.ace.client.model.TargetBuilder;
 
 public class AceProvisioner {
-	public static void main(String[] args) throws Exception {
-		System.out.println("Launching ACE!: " + args[0]);
-
-		String[] jarUrls = args[0].split(";");
-		int port = Integer.parseInt(args[1]);
-		new AceProvisioner(jarUrls, port).installBundles();
-	}
-
-	private AceClientWorkspace workspace;
+	private AceClientWorkspace m_workspace;
 	private String m_aceUrl = "http://localhost:8080";
 	private String m_target = "default";
 	private String m_feature = "default";
 	private String m_distribution = "default";
-	private Artifact[] artifacts;
-	private String[] resourceIds;
-	private String[] jarUrls;
+	private Artifact[] m_artifacts;
+	private String[] m_resourceIds;
+	private String[] m_jarUrls;
 	private int m_port;
+	
+	public static void main(String[] args) throws Exception {
+		if(args.length != 6) {
+			throw new IllegalArgumentException("Invalid arguments. Need: [eclipseport] [host] [feature] [distribution] [target] [bundl1;bundle2;bundle3...]");
+		}
+				
+		int port = Integer.parseInt(args[0]);
+		String host = args[1];
+		String feature = args[2];
+		String distribution = args[3];
+		String target = args[4];
+		String bundles = args[5];
+		
+		String[] jarUrls = bundles.split(";");
+		
+		new AceProvisioner(host, feature, distribution, target, jarUrls, port).installBundles();
+	}
 
-	public AceProvisioner(String[] jarUrls, int port) {
-		this.jarUrls = jarUrls;
+	public AceProvisioner(String host, String feature, String distribution, String target, String[] jarUrls, int port) {
+		m_aceUrl = host;
+		m_feature = feature;
+		m_distribution = distribution;
+		m_target = target;
+		m_jarUrls = jarUrls;
 		m_port = port;
 		connectToServer();
 	}
 
 	private void installBundles() throws Exception {
-		
-
 		AceClient aceClient = new AceClient(m_aceUrl + "/client/work");
-		workspace = aceClient.createNewWorkspace();
+		m_workspace = aceClient.createNewWorkspace();
 
 		createDefaultDistribution();
 		createDefaultFeature();
 
-		artifacts = workspace.getResources(Artifact.class);
-		resourceIds = workspace.getResourceIds(Artifact.class);
+		m_artifacts = m_workspace.getResources(Artifact.class);
+		m_resourceIds = m_workspace.getResourceIds(Artifact.class);
 
 		processBundles();
 
-		workspace.commit();
+		m_workspace.commit();
 	}
 
 	private void connectToServer() {
@@ -106,7 +117,7 @@ public class AceProvisioner {
 
 	private void processBundles() throws Exception, IOException,
 			FileNotFoundException, AceClientException {
-		for (String url : jarUrls) {
+		for (String url : m_jarUrls) {
 			Bundle bundle = parseManifest(new File(url));
 			processJar(bundle);
 		}
@@ -166,18 +177,15 @@ public class AceProvisioner {
 				.setBundleSymbolicName(jar.getSymbolicName())
 				.setBundleVersion(jar.getVersion()).setName(jar.getName());
 
-		boolean local = false;
-
 		Artifact artifact = artifactBuilder.build();
 		if (!artifactVersionExists(artifact)) {
 			if (artifactBundleSymoblicNameExists(artifact)) {
 
 				String resourceId = getResourceId(artifact);
-				workspace.deleteResource(Artifact.class, resourceId);
+				m_workspace.deleteResource(Artifact.class, resourceId);
 			}
 
-			// TODO: uploadArtifact(artifact);
-			workspace.createResource(artifact);
+			m_workspace.createResource(artifact);
 			System.out.println("Creating artifact "
 					+ artifact.getBundleSymbolicName() + " - "
 					+ artifact.getBundleVersion() + " - "
@@ -188,7 +196,7 @@ public class AceProvisioner {
 	}
 
 	private boolean artifactBundleSymoblicNameExists(Artifact artifact) {
-		for (Artifact existingArtifact : artifacts) {
+		for (Artifact existingArtifact : m_artifacts) {
 
 			if (existingArtifact.getBundleSymbolicName() != null
 					&& existingArtifact.getBundleSymbolicName().equals(
@@ -198,20 +206,10 @@ public class AceProvisioner {
 		}
 
 		return false;
-	}
-
-	private boolean artifactUrlExists(Artifact artifact) {
-		for (Artifact existingArtifact : artifacts) {
-			if (existingArtifact.getUrl().equals(artifact.getUrl())) {
-				return true;
-			}
-		}
-
-		return false;
-	}
+	}	
 
 	private String getResourceId(Artifact artifact) {
-		for (String id : resourceIds) {
+		for (String id : m_resourceIds) {
 
 			if (id.contains("Bundle-SymbolicName-"
 					+ artifact.getBundleSymbolicName() + "-Bundle-Version-")) {
@@ -224,7 +222,7 @@ public class AceProvisioner {
 
 	private boolean artifactVersionExists(Artifact artifact)
 			throws AceClientException {
-		Artifact[] artifacts = workspace.getResources(Artifact.class);
+		Artifact[] artifacts = m_workspace.getResources(Artifact.class);
 		for (Artifact repoArtifact : artifacts) {
 			if (repoArtifact.getMimetype()
 					.equals("application/vnd.osgi.bundle")
@@ -254,14 +252,14 @@ public class AceProvisioner {
 					.setAttribute("left", "*").setAttribute("right", "*")
 					.build();
 
-			workspace.createResource(artifact2Feature);
+			m_workspace.createResource(artifact2Feature);
 		}
 	}
 
 	private void createDefaultFeature() throws AceClientException {
 		if (!defaultFeatureExisists()) {
 			Feature feature = new FeatureBuilder().setName(m_feature).build();
-			workspace.createResource(feature);
+			m_workspace.createResource(feature);
 		}
 
 		createFeature2Distribution();
@@ -272,7 +270,7 @@ public class AceProvisioner {
 			Feature2Distribution feature2Distribution = new Feature2DistributionBuilder()
 					.setLeftEndpoint("(name=" + m_feature + ")")
 					.setRightEndpoint("(name=" + m_distribution + ")").build();
-			workspace.createResource(feature2Distribution);
+			m_workspace.createResource(feature2Distribution);
 		}
 	}
 
@@ -280,7 +278,7 @@ public class AceProvisioner {
 		if (!defaultDistributionExisists()) {
 			Distribution dist = new DistributionBuilder().setName(
 					m_distribution).build();
-			workspace.createResource(dist);
+			m_workspace.createResource(dist);
 
 			createTarget();
 			createDistribution2Target();
@@ -291,7 +289,7 @@ public class AceProvisioner {
 	private void createTarget() throws AceClientException {
 		Target target = new TargetBuilder().setId(m_target).build();
 		try {
-			workspace.createResource(target);
+			m_workspace.createResource(target);
 		} catch (AceClientException ex) {
 			// ignore, this happens when target already exists...
 		}
@@ -302,12 +300,12 @@ public class AceProvisioner {
 			Distribution2Target distribution2Target = new Distribution2TargetBuilder()
 					.setLeftEndpoint("(name=" + m_distribution + ")")
 					.setRightEndpoint("(id=" + m_target + ")").build();
-			workspace.createResource(distribution2Target);
+			m_workspace.createResource(distribution2Target);
 		}
 	}
 
 	private boolean defaultFeatureExisists() throws AceClientException {
-		Feature[] features = workspace.getResources(Feature.class);
+		Feature[] features = m_workspace.getResources(Feature.class);
 		for (Feature f : features) {
 			if (f.getName().equals(m_feature)) {
 				return true;
@@ -319,7 +317,7 @@ public class AceProvisioner {
 
 	private boolean artifact2FeatureExists(Artifact artifact)
 			throws AceClientException {
-		Artifact2Feature[] links = workspace
+		Artifact2Feature[] links = m_workspace
 				.getResources(Artifact2Feature.class);
 		for (Artifact2Feature a2f : links) {
 
@@ -339,7 +337,7 @@ public class AceProvisioner {
 
 	private boolean defaultFeature2DistributionExisists()
 			throws AceClientException {
-		Feature2Distribution[] features = workspace
+		Feature2Distribution[] features = m_workspace
 				.getResources(Feature2Distribution.class);
 		for (Feature2Distribution f : features) {
 			if (f.getLeftEndpoint().equals("(name=" + m_feature + ")")
@@ -353,7 +351,7 @@ public class AceProvisioner {
 	}
 
 	private boolean defaultDistributionExisists() throws AceClientException {
-		Distribution[] distributions = workspace
+		Distribution[] distributions = m_workspace
 				.getResources(Distribution.class);
 		for (Distribution d : distributions) {
 			if (d.getName().equals(m_distribution)) {
@@ -366,7 +364,7 @@ public class AceProvisioner {
 
 	private boolean defaultDistribution2TargetExists()
 			throws AceClientException {
-		Distribution2Target[] features = workspace
+		Distribution2Target[] features = m_workspace
 				.getResources(Distribution2Target.class);
 		for (Distribution2Target f : features) {
 			if (f.getLeftEndpoint().equals("(name=" + m_distribution + ")")

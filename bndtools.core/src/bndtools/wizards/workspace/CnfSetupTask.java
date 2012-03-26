@@ -16,6 +16,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
@@ -34,59 +35,66 @@ import org.eclipse.ui.actions.WorkspaceModifyOperation;
 import org.osgi.framework.Bundle;
 
 import aQute.bnd.build.Workspace;
-import aQute.lib.io.IO;
 import bndtools.Central;
 import bndtools.Plugin;
-import bndtools.types.Pair;
 import bndtools.utils.BundleUtils;
-import bndtools.wizards.workspace.CnfSetupWizard.RequiredOperation;
+import bndtools.wizards.workspace.CnfInfo.Existence;
 
 public class CnfSetupTask extends WorkspaceModifyOperation {
 
     private final IConfigurationElement templateConfig;
-    private final RequiredOperation operation;
+    private final CnfSetupOperation operation;
 
-    public CnfSetupTask(RequiredOperation operation, IConfigurationElement templateConfig) {
+    public CnfSetupTask(CnfSetupOperation operation, IConfigurationElement templateConfig) {
         this.operation = operation;
         this.templateConfig = templateConfig;
-    }
-
-    static enum CnfStatus {
-        NotExists, DirExists, ImportedClosed, ImportedOpen
     }
 
     /**
      * Returns whether the workspace is configured for bnd (i.e. the cnf project exists).
      * @return
      */
-    static Pair<CnfStatus, IPath> getWorkspaceCnfStatus() {
-        Pair<CnfStatus, IPath> result;
+    static CnfInfo getWorkspaceCnfInfo() {
+        CnfInfo result;
 
         IProject cnf = ResourcesPlugin.getWorkspace().getRoot().getProject(Workspace.CNFDIR);
         if (cnf.exists()) {
-            CnfStatus status = cnf.isOpen() ? CnfStatus.ImportedOpen : CnfStatus.ImportedClosed;
-            result = Pair.newInstance(status, cnf.getLocation());
+            IPath location = cnf.getLocation();
+            if (cnf.isOpen())
+                result = new CnfInfo(Existence.ImportedOpen, location);
+            else
+                result = new CnfInfo(Existence.ImportedClosed, location);
         } else {
-            IPath cnfPath = ResourcesPlugin.getWorkspace().getRoot().getLocation().append(Workspace.CNFDIR);
-            File cnfDir = cnfPath.toFile();
+            IPath location = ResourcesPlugin.getWorkspace().getRoot().getLocation().append(Workspace.CNFDIR);
+            File dir = location.toFile();
 
-            CnfStatus status = cnfDir.isDirectory() ? CnfStatus.DirExists : CnfStatus.NotExists;
-            result = Pair.newInstance(status, cnfPath);
+            if (dir.isDirectory())
+                result = new CnfInfo(Existence.Exists, location);
+            else
+                result = new CnfInfo(Existence.None, location);
         }
         return result;
     }
 
     @Override
     protected void execute(IProgressMonitor monitor) throws CoreException {
-        switch (operation) {
+        SubMonitor progress = SubMonitor.convert(monitor);
+
+        switch (operation.getType()) {
         case Import:
-            importCnf(monitor);
+            progress.setWorkRemaining(2);
+            importCnf(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
+            rebuildWorkspace(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
             break;
         case Open:
-            openProject(monitor);
+            progress.setWorkRemaining(2);
+            openProject(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
+            rebuildWorkspace(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
             break;
         case Create:
-            createOrReplaceCnf(monitor);
+            progress.setWorkRemaining(2);
+            createOrReplaceCnf(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
+            rebuildWorkspace(progress.newChild(1, SubMonitor.SUPPRESS_NONE));
             break;
         case Nothing:
             break;
@@ -99,12 +107,11 @@ public class CnfSetupTask extends WorkspaceModifyOperation {
     }
 
     protected void importCnf(IProgressMonitor monitor) throws CoreException {
-        IPath path = getWorkspaceCnfStatus().getSecond();
-
         IWorkspace workspace = ResourcesPlugin.getWorkspace();
-        IContainer container = workspace.getRoot().getContainerForLocation(path);
+        IPath location = operation.getLocation();
+        IContainer container = workspace.getRoot().getContainerForLocation(location);
         if (container == null) {
-            IProjectDescription projDesc = workspace.loadProjectDescription(path.append(IProjectDescription.DESCRIPTION_FILE_NAME));
+            IProjectDescription projDesc = workspace.loadProjectDescription(location.append(IProjectDescription.DESCRIPTION_FILE_NAME));
             IProject project = workspace.getRoot().getProject(Workspace.CNFDIR);
             project.create(projDesc, monitor);
             project.open(monitor);
@@ -116,29 +123,18 @@ public class CnfSetupTask extends WorkspaceModifyOperation {
                 project.create(monitor);
             }
         } else {
-            throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Incorrect path (not a project): " + path, null));
+            throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Incorrect path (not a project): " + location, null));
         }
     }
 
     protected void createOrReplaceCnf(IProgressMonitor monitor) throws CoreException {
         SubMonitor progress = SubMonitor.convert(monitor);
-
-        Pair<CnfStatus, IPath> cnf = getWorkspaceCnfStatus();
-        switch (cnf.getFirst()) {
-        case ImportedClosed:
-        case ImportedOpen:
-            throw new CoreException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Cannot create: project already exists in the Eclipse workspace.", null));
-        case DirExists:
-            deleteDir(cnf.getSecond());
-            break;
-        case NotExists:
-            break;
-        }
+        progress.setWorkRemaining(3);
 
         IProject cnfProject = ResourcesPlugin.getWorkspace().getRoot().getProject(Workspace.CNFDIR);
-        progress.setWorkRemaining(3);
-        JavaCapabilityConfigurationPage.createProject(cnfProject, (URI) null, progress.newChild(1, SubMonitor.SUPPRESS_NONE));
-        configureJavaProject(JavaCore.create(cnfProject), null, progress.newChild(1, SubMonitor.SUPPRESS_NONE));
+        URI location = operation.getLocation() != null ? operation.getLocation().toFile().toURI() : null;
+        JavaCapabilityConfigurationPage.createProject(cnfProject, location, progress.newChild(1, SubMonitor.SUPPRESS_NONE));
+        configureJavaProject(JavaCore.create(cnfProject), progress.newChild(1, SubMonitor.SUPPRESS_NONE));
 
         String bsn = templateConfig.getContributor().getName();
         Bundle bundle = BundleUtils.findBundle(Plugin.getDefault().getBundleContext(), bsn, null);
@@ -163,8 +159,8 @@ public class CnfSetupTask extends WorkspaceModifyOperation {
         }
     }
 
-    private void deleteDir(IPath path) {
-        IO.delete(path.toFile());
+    void rebuildWorkspace(IProgressMonitor monitor) throws CoreException {
+        ResourcesPlugin.getWorkspace().build(IncrementalProjectBuilder.CLEAN_BUILD, monitor);
     }
 
     private static void copyBundleEntries(Bundle sourceBundle, String sourcePath, IPath sourcePrefix, IContainer destination, IProgressMonitor monitor) throws CoreException {
@@ -208,7 +204,7 @@ public class CnfSetupTask extends WorkspaceModifyOperation {
         }
     }
 
-    private static void configureJavaProject(IJavaProject javaProject, String newProjectCompliance, IProgressMonitor monitor) throws CoreException {
+    private static void configureJavaProject(IJavaProject javaProject, IProgressMonitor monitor) throws CoreException {
         SubMonitor progress = SubMonitor.convert(monitor, 5);
         IProject project = javaProject.getProject();
         BuildPathsBlock.addJavaNature(project, progress.newChild(1));

@@ -26,53 +26,72 @@ import aQute.bnd.build.Project;
 import bndtools.Central;
 import bndtools.Plugin;
 
-public class AceLaunchDelegate extends JavaLaunchDelegate  {
+public class AceLaunchDelegate extends JavaLaunchDelegate {
     public final static String CONSOLE_NAME = "ACE";
     private Project m_project;
     private AceLaunchSocket m_aceLaunchSocket;
     private int m_port;
-    
+    private String m_aceUrl;
+    private String m_feature;
+    private String m_distribution;
+    private String m_target;
+
     public AceLaunchDelegate() {
         m_aceLaunchSocket = new AceLaunchSocket();
         m_port = m_aceLaunchSocket.openSocket();
     }
-    
+
     @Override
-    public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor) throws CoreException {        
+    public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor) throws CoreException {
         m_aceLaunchSocket.start();
+        m_aceUrl = configuration.getAttribute(LaunchConstants.ATTR_ACE_ADDRESS, "http://localhost:8080");
+        m_feature = configuration.getAttribute(LaunchConstants.ATTR_ACE_FEATURE, "default");
+        m_distribution = configuration.getAttribute(LaunchConstants.ATTR_ACE_DISTRIBUTION, "default");
+        m_target = configuration.getAttribute(LaunchConstants.ATTR_ACE_TARGET, "default");
+        
         super.launch(configuration, mode, launch, monitor);
         registerLaunchPropertiesRegenerator(m_project, launch);
-               
     }
-    
+
     @Override
     public String getMainTypeName(ILaunchConfiguration configuration) throws CoreException {
         return "bndtools.ace.provisioning.AceProvisioner";
     }
-    
+
     @Override
     public String[] getClasspath(ILaunchConfiguration configuration) throws CoreException {
         org.osgi.framework.Bundle bundle = Platform.getBundle("bndtools.ace.provisioning");
-        
+
         String location = bundle.getLocation();
-        return new String[] { location};
+        return new String[] { location };
     }
-    
+
     @Override
-    public String getProgramArguments(ILaunchConfiguration configuration) throws CoreException {
+    public String getProgramArguments(ILaunchConfiguration configuration) {
         try {
             m_project = LaunchUtils.getBndProject(configuration);
+            
             StringBuilder sb = new StringBuilder();
-            for(Container bundle : m_project.getRunbundles()) {
+            sb.append(m_port).append(" ")
+               .append(m_aceUrl).append(" ")
+               .append(m_feature).append(" ")
+               .append(m_distribution).append(" ")
+               .append(m_target).append(" ");
+            
+            for (Container bundle : m_project.getDeliverables()) {
                 sb.append(bundle.getFile().getAbsolutePath()).append(";");
             }
             
-            sb.append(" ").append(m_port);
+            for (Container bundle : m_project.getRunbundles()) {
+                sb.append(bundle.getFile().getAbsolutePath()).append(";");
+            }
+            
+            
             return sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
         }
+
     }
 
     private void registerLaunchPropertiesRegenerator(final Project project, final ILaunch launch) throws CoreException {
@@ -113,7 +132,7 @@ public class AceLaunchDelegate extends JavaLaunchDelegate  {
                         for (Container bundle : m_project.getRunbundles()) {
                             runBundleSet.add(bundle.getFile().getAbsolutePath());
                         }
-                        
+
                         event.getDelta().accept(new IResourceDeltaVisitor() {
                             public boolean visit(IResourceDelta delta) throws CoreException {
                                 if (update.get())

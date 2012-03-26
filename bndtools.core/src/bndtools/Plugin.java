@@ -13,6 +13,8 @@ package bndtools;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.core.resources.IWorkspace;
@@ -29,6 +31,7 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.bindex.BundleIndexer;
+import org.osgi.service.indexer.ResourceIndexer;
 import org.osgi.service.url.URLConstants;
 import org.osgi.service.url.URLStreamHandlerService;
 import org.osgi.util.tracker.ServiceTracker;
@@ -36,6 +39,7 @@ import org.osgi.util.tracker.ServiceTracker;
 import aQute.bnd.build.Workspace;
 import aQute.lib.osgi.Processor;
 import aQute.libg.version.Version;
+import bndtools.api.ILogger;
 import bndtools.services.WorkspaceURLStreamHandlerService;
 
 public class Plugin extends AbstractUIPlugin {
@@ -44,16 +48,6 @@ public class Plugin extends AbstractUIPlugin {
 	public static final String BND_EDITOR_ID = PLUGIN_ID + ".bndEditor";
 
 	public static final Version DEFAULT_VERSION = new Version(0, 0, 0);
-
-	public static final String PREF_ENABLE_SUB_BUNDLES = "enableSubBundles";
-    public static final String PREF_NOASK_PACKAGEINFO = "noAskPackageInfo";
-
-	public static final String PREF_HIDE_INITIALISE_CNF_WIZARD = "hideInitialiseCnfWizard";
-	public static final String PREF_HIDE_INITIALISE_CNF_ADVICE = "hideInitialiseCnfAdvice";
-
-	public static final String PREF_HIDE_WARNING_EXTERNAL_FILE = "hideExternalFileWarning";
-
-    public static final String PREF_BUILD_LOGGING = "buildLogging";
 
 	public static final String BNDTOOLS_NATURE = "bndtools.core.bndnature";
 
@@ -67,9 +61,23 @@ public class Plugin extends AbstractUIPlugin {
     private volatile ServiceTracker workspaceTracker;
     private volatile ServiceRegistration urlHandlerReg;
     private volatile IndexerTracker indexerTracker;
+    private volatile ResourceIndexerTracker resourceIndexerTracker;
+    
+    private volatile ScheduledExecutorService scheduler;
 
     private volatile Central central;
-
+    
+    private final ILogger logger = new ILogger() {
+        public void logError(String message, Throwable exception) {
+            getLog().log(new Status(IStatus.ERROR, PLUGIN_ID, 0, message, exception));
+        }
+        public void logWarning(String message, Throwable exception) {
+            getLog().log(new Status(IStatus.WARNING, PLUGIN_ID, 0, message, exception));
+        }
+        public void logInfo(String message, Throwable exception) {
+            getLog().log(new Status(IStatus.INFO, PLUGIN_ID, 0, message, exception));
+        }
+    };
 
     @Override
     public void start(BundleContext context) throws Exception {
@@ -77,12 +85,17 @@ public class Plugin extends AbstractUIPlugin {
         super.start(context);
         plugin = this;
         this.bundleContext = context;
+        
+        scheduler = Executors.newScheduledThreadPool(1);
 
         bndActivator = new Activator();
         bndActivator.start(context);
 
         indexerTracker = new IndexerTracker(context);
         indexerTracker.open();
+        
+        resourceIndexerTracker = new ResourceIndexerTracker(context, 1000);
+        resourceIndexerTracker.open();
 
         registerWorkspaceServiceFactory(context);
 
@@ -150,24 +163,17 @@ public class Plugin extends AbstractUIPlugin {
 
         bndActivator.stop(context);
         central.close();
+        resourceIndexerTracker.close();
         indexerTracker.close();
         this.bundleContext = null;
         plugin = null;
         super.stop(context);
         unregisterWorkspaceURLHandler();
+        scheduler.shutdown();
     }
 
 	public static Plugin getDefault() {
 		return plugin;
-	}
-
-	public static void log(IStatus status) {
-		Plugin instance = plugin;
-		if(instance != null) {
-			instance.getLog().log(status);
-		} else {
-			System.err.println(String.format("Unable to print to log for %s: bundle has been stopped.", Plugin.PLUGIN_ID));
-		}
 	}
 
 	public BundleContext getBundleContext() {
@@ -269,11 +275,34 @@ public class Plugin extends AbstractUIPlugin {
             }
         });
     }
+    
+    public ILogger getLogger() {
+        return logger;
+    }
+    
+    /**
+     * @deprecated Use {@link #getLogger() instead}
+     * @param status
+     */
+    @Deprecated
+    public static void log(IStatus status) {
+        Plugin instance = plugin;
+        if (instance != null) {
+            instance.getLog().log(status);
+        } else {
+            System.err.println(String.format("Unable to print to log for %s: bundle has been stopped.", Plugin.PLUGIN_ID));
+        }
+    }
 
-	public static void logError(String message, Throwable exception) {
-		log(new Status(IStatus.ERROR, PLUGIN_ID, 0, message, exception));
-	}
-
+    /**
+     * @deprecated Use {@link #getLogger() instead}
+     * @param status
+     */
+    @Deprecated
+    public static void logError(String message, Throwable exception) {
+        log(new Status(IStatus.ERROR, PLUGIN_ID, 0, message, exception));
+    }
+    
     public Central getCentral() {
         return central;
     }
@@ -284,6 +313,14 @@ public class Plugin extends AbstractUIPlugin {
 
     public BundleIndexer getBundleIndexer() {
         return indexerTracker;
+    }
+    
+    public ResourceIndexer getResourceIndexer() {
+        return resourceIndexerTracker;
+    }
+    
+    public ScheduledExecutorService getScheduler() {
+        return scheduler;
     }
 
 }

@@ -33,13 +33,6 @@ Private-Package:\
 	org.ardverk.collection,\
 	org.osgi.impl.bundle.obr.resource,\
 	org.osgi.service.obr,\
-	org.amdatu.ace.client,\
-	org.amdatu.ace.client.model,\
-	com.google.gson,\
-	com.google.gson.annotations,\
-	com.google.gson.internal,\
-	com.google.gson.reflect,\
-	com.google.gson.stream,\
 	${felix.obr.packages},\
 	aQute.libg.generics,\
 	aQute.libg.sax.filters,\
@@ -48,10 +41,13 @@ Private-Package:\
 	aQute.lib.filter,\
 	aQute.lib.deployer,\
 	aQute.lib.deployer.obr
+
 Export-Package: bndtools.api.*,\
 	bndtools.types,\
 	bndtools.editor.model,\
-	bndtools.model.clauses
+	bndtools.model.clauses,\
+	org.bndtools.build.api,\
+	org.bndtools.core.ui
 
 Include-Resource: plugin.xml=_plugin.xml,\
 	resources,\
@@ -80,7 +76,6 @@ eclipse.deps: \
 	org.eclipse.ui.workbench.texteditor,\
 	org.eclipse.ui.editors,\
 	org.eclipse.ui.views,\
-	org.eclipse.ui.console,\
 	org.eclipse.debug.core,\
 	org.eclipse.debug.ui,\
 	org.eclipse.jdt.launching,\
@@ -95,8 +90,10 @@ eclipse.deps: \
 	org.eclipse.core.expressions,\
 	org.eclipse.core.filesystem
 
--buildpath: ee.j2se;version='[1.5,1.6)',\
-	biz.aQute.bndlib;version=1.51,\
+-buildpath:\
+	ee.j2se;version='[1.5,1.6)',\
+	${bndlib},\
+	org.osgi.impl.bundle.bindex2.lib,\
 	org.apache.felix.bundlerepository,\
 	patricia-trie,\
 	junit.osgi,\
@@ -107,6 +104,4 @@ eclipse.deps: \
 	javax.xml.stream,\
 	org.osgi.impl.bundle.bindex;version=project,\
 	libs/org.osgi.service.obr-1.0.2.jar;version=file,\
-	libs/jcip-annotations.jar;version=file,\
-	libs/org.amdatu.ace.client-0.0.1-SNAPSHOT.jar;version=file,\
-	libs/gson-1.7.1.jar;version=file	
+	libs/jcip-annotations.jar;version=file
