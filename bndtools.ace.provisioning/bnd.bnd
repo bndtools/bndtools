@@ -1,0 +1,13 @@
+Export-Package: bndtools.ace.provisioning
+-buildpath: libs/org.amdatu.ace.client-0.0.1-SNAPSHOT.jar;version=file,\
+	libs/gson-1.7.1.jar;version=file,\
+	biz.aQute.bnd
+	
+Private-Package: org.amdatu.ace.client,\
+	org.amdatu.ace.client.model,\
+	com.google.gson,\
+	com.google.gson.annotations,\
+	com.google.gson.internal,\
+	com.google.gson.reflect,\
+	com.google.gson.stream,\
+	

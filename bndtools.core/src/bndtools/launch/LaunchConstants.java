@@ -7,6 +7,7 @@ public interface LaunchConstants {
 
     public static String LAUNCH_ID_OSGI_RUNTIME = "bndtools.launch";
     public static String LAUNCH_ID_OSGI_JUNIT   = "bndtools.launch.junit";
+    public static String LAUNCH_ID_ACE   = "bndtools.launch.ace";
 
     public static String ATTR_LAUNCH_TARGET = "launchTarget";
     public static String ATTR_DYNAMIC_BUNDLES = "dynamicBundles";
@@ -17,6 +18,18 @@ public interface LaunchConstants {
 
     public static String ATTR_TRACE = "trace";
     public static boolean DEFAULT_TRACE = false;
+    
+    public static String ATTR_ACE_FEATURE = "aceFeature";
+    public static String DEFAULT_ACE_FEATURE = "default";
+    
+    public static String ATTR_ACE_DISTRIBUTION = "aceDistribution";
+    public static String DEFAULT_ACE_DISTRIBUTION = "default";
+    
+    public static String ATTR_ACE_TARGET = "aceTarget";
+    public static String DEFAULT_ACE_TARGET = "default";
+    
+    public static String ATTR_ACE_ADDRESS = "aceAddress";
+    public static String DEFAULT_ACE_ADDRESS = "http://localhost:8080";
 
     @Deprecated
     public static String ATTR_LOGLEVEL = "logLevel";
