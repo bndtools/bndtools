@@ -116,7 +116,7 @@ public class OSGiRunLaunchDelegate extends AbstractOSGiLaunchDelegate {
 
         bndLauncher.setKeep(!clean);
 
-        bndLauncher.setTrace(enableTraceOption(configuration));
+        enableTraceOptionIfSetOnConfiguration(configuration, bndLauncher);
     }
 
     /**
