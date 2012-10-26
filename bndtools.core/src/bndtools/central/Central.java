@@ -427,6 +427,28 @@ public class Central implements IStartupParticipant {
         return result;
     }
 
+    public static Project bndFileToProject(File bndFile) throws Exception {
+        //IPath path = Central.toPath(bndFile);
+        //IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+        //File projectDir = resource.getProject().getLocation().toFile();
+        //project = Workspace.getProject(projectDir);
+
+        File projectDir = bndFile.getParentFile();
+        Project project = Workspace.getProject(projectDir);
+        return project;
+    }
+
+    public static File IPathToFile(IPath path) throws Exception {
+        //IFile ifile = wsroot.getFile(path);
+        //IPath p = ifile.getLocation();
+        //File file = p.toFile();
+        //files.add(file);
+
+        //String str = ResourcesPlugin.getWorkspace().getRoot().getLocation().toOSString();
+        String str = getWorkspace().getBase().getAbsolutePath();
+        return new File(str, path.toString());
+    }
+
     public static void refresh(IPath path) {
         try {
             IResource r = ResourcesPlugin.getWorkspace().getRoot().findMember(path);

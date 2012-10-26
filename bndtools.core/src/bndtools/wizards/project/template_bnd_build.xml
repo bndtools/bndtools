@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="project" default="build">
-
-	<!-- -->
-
-	<import file="../cnf/build.xml" />
+<project name="@PROJECT" default="build"> 
+	<property name="workspacedir" location="@PATH_TO_WORKSPACE_ROOT"/>
+	<import file="${workspacedir}/cnf/build.xml"/>
 </project>

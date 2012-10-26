@@ -13,10 +13,6 @@ import java.util.Properties;
 import org.bndtools.builder.NewBuilder;
 import org.bndtools.builder.Plugin;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -132,17 +128,18 @@ public class BndContainerSourceManager {
             return null;
         }
 
-        IPath bundlePath = path;
-        IWorkspace workspace = ResourcesPlugin.getWorkspace();
-        IWorkspaceRoot root = workspace.getRoot();
-        IResource resource = root.findMember(path);
-        if (resource != null) {
-            bundlePath = resource.getLocation();
-        }
+        //        IPath bundlePath = path;
+        //        IWorkspace workspace = ResourcesPlugin.getWorkspace();
+        //        IWorkspaceRoot root = workspace.getRoot();
+        //        IResource resource = root.findMember(path);
+        //        if (resource != null) {
+        //            bundlePath = resource.getLocation();
+        //        }
 
         Jar jar = null;
         try {
-            jar = new Jar(bundlePath.toFile());
+            //jar = new Jar(bundlePath.toFile());
+            jar = new Jar(Central.IPathToFile(path));
 
             String bsn = jar.getBsn();
             String version = jar.getVersion();

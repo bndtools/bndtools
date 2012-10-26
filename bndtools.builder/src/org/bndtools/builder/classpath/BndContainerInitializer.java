@@ -20,10 +20,11 @@ import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
 import org.bndtools.api.ModelListener;
 import org.bndtools.utils.jar.JarUtils;
+import org.eclipse.core.internal.utils.FileUtil;
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.resources.WorkspaceJob;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -213,7 +214,8 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
         }
 
         for (Container c : containers) {
-            IClasspathEntry cpe;
+            IClasspathEntry cpe = null;
+            IPath sourceAttachment = null;
 
             if (c.getError() == null) {
                 File file = c.getFile();
@@ -246,19 +248,30 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
                 }
                 if (p != null) {
                     if (c.getType() == Container.TYPE.PROJECT) {
-                        IResource resource = ResourcesPlugin.getWorkspace().getRoot().getFile(p);
+                        //IResource resource = ResourcesPlugin.getWorkspace().getRoot().getFile(p);
                         List<IAccessRule> rules = projectAccessRules.get(c.getProject());
                         IAccessRule[] accessRules = null;
                         if (rules != null) {
                             rules.add(JavaCore.newAccessRule(new Path("**"), IAccessRule.K_NON_ACCESSIBLE));
                             accessRules = rules.toArray(new IAccessRule[rules.size()]);
                         }
-                        cpe = JavaCore.newProjectEntry(resource.getProject().getFullPath(), accessRules, false, null, true);
+                        //org.eclipse.jdt.internal.core.builder.JavaBuilder.DEBUG=true;
+
+                        IPath ipath;
+                        try {
+                            //File f = c.getProject().getBase();
+                            ipath = new Path("/" + c.getProject().getName());
+                            cpe = JavaCore.newProjectEntry(ipath, accessRules, false, null, true);
+                        } catch (Exception e) {
+                            errors.add("Unable to find " + c.getFile().getAbsolutePath());
+                        }
                     } else {
                         IAccessRule[] accessRules = calculateRepoBundleAccessRules(c);
                         cpe = JavaCore.newLibraryEntry(p, null, null, accessRules, null, false);
                     }
-                    result.add(cpe);
+                    if (cpe != null) {
+                        result.add(cpe);
+                    }
                 }
             } else {
                 errors.add(c.getError());
@@ -369,7 +382,11 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
     }
 
     protected static IPath fileToPath(File file) throws Exception {
-        IPath path = Central.toPath(file);
+        // Turns out we don't want Central.toPath() because it makes it
+        // workspace relative... So, if you have a path like:
+        // COTS/blah/blah and you don't have an eclipse project called COTS,
+        // then it doesn't resolve.. SO we do want absolute path. 
+        IPath path = null; //Central.toPath(file);
         if (path == null)
             path = Path.fromOSString(file.getAbsolutePath());
 

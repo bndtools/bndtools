@@ -233,6 +233,23 @@ public class ProjectLocationGroup {
         IPath projectPath = Path.fromOSString(location);
         return Platform.getLocation().isPrefixOf(projectPath);
     }
+    
+    public boolean isLocationAtTopOfWorkspace() {
+        if (isLocationInWorkspace()) {
+            
+            String location = getLocation().toOSString();
+            IPath projectPath = Path.fromOSString(location);
+            
+            projectPath = projectPath.removeLastSegments(1);
+            if (Platform.getLocation().equals(projectPath)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 
     public IStatus getStatus() {
         return status;
