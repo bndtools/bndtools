@@ -426,6 +426,17 @@ public class Central implements IStartupParticipant {
         return result;
     }
 
+    public static File IPathToFile(IPath path) throws Exception {
+        //IFile ifile = wsroot.getFile(path);
+        //IPath p = ifile.getLocation();
+        //File file = p.toFile();
+        //files.add(file);
+
+        //String str = ResourcesPlugin.getWorkspace().getRoot().getLocation().toOSString();
+        String str = getWorkspace().getBase().getAbsolutePath();
+        return new File(str, path.toString());
+    }
+
     public static void refresh(IPath path) {
         try {
             IResource r = ResourcesPlugin.getWorkspace().getRoot().findMember(path);

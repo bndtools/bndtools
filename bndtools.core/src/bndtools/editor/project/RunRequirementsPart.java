@@ -20,8 +20,6 @@ import org.bndtools.core.ui.resource.RequirementLabelProvider;
 import org.bndtools.utils.dnd.AbstractViewerDropAdapter;
 import org.bndtools.utils.dnd.SupportedTransfer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.IJobChangeEvent;
@@ -66,7 +64,6 @@ import org.osgi.resource.Namespace;
 import org.osgi.resource.Requirement;
 
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.VersionedClause;
 import aQute.bnd.osgi.Constants;
@@ -501,14 +498,18 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
         try {
             BndEditModel model = (BndEditModel) getManagedForm().getInput();
             File bndFile = model.getBndResource();
-            IPath path = Central.toPath(bndFile);
-            IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
-            File projectDir = resource.getProject().getLocation().toFile();
-            if (Project.BNDFILE.equals(resource.getName())) {
-                project = Central.getProject(projectDir);
-            } else {
-                project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
+            //IPath path = Central.toPath(bndFile);
+            //IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+            //File projectDir = resource.getProject().getLocation().toFile();
+            //if (Project.BNDFILE.equals(resource.getName())) {
+            //    project = Central.getProject(projectDir);
+            //} else {
+            //    project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
+            project = Central.getProject(bndFile.getParentFile());
+            if (project == null) {
+                project = new Project(Central.getWorkspace(), bndFile.getParentFile(), bndFile);
             }
+            return project;
         } catch (Exception e) {
             logger.logError("Error getting project from editor model", e);
         }
