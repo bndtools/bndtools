@@ -38,6 +38,11 @@ public class NewProjectResourceListener implements IResourceChangeListener {
                         IProject project = (IProject) resource;
                         if (project.isOpen() && project.hasNature(BndtoolsConstants.NATURE_ID) && ((delta.getKind() & IResourceDelta.ADDED) != 0)) {
                             newProjects.add(project);
+                        } else if ((delta.getKind() & IResourceDelta.REMOVED) != 0) {
+                            newProjects.add(project);
+                        } else if ((delta.getKind() & IResourceDelta.CHANGED) != 0 && (delta.getFlags() & IResourceDelta.OPEN) != 0) {
+                            // If resource changed its open or closed state.
+                            newProjects.add(project);
                         }
                     }
 
