@@ -30,7 +30,6 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.osgi.framework.Version;
 import bndtools.api.ILogger;
-
 import aQute.bnd.build.Project;
 import aQute.bnd.build.Workspace;
 import aQute.bnd.build.WorkspaceRepository;
@@ -43,6 +42,8 @@ public class Central {
     static Workspace workspace = null;
     static WorkspaceR5Repository r5Repository = null;
     static RepositoryPlugin workspaceRepo = null;
+
+    private static BndWorkspaceRepository bndRepository;
 
     static final AtomicBoolean indexValid = new AtomicBoolean(false);
     static final ConcurrentMap<String,Map<String,SortedSet<Version>>> exportedPackageMap = new ConcurrentHashMap<String,Map<String,SortedSet<Version>>>();
@@ -179,6 +180,16 @@ public class Central {
         return r5Repository;
     }
 
+    public synchronized static BndWorkspaceRepository getBndWorkspaceRepository() throws Exception {
+        if (bndRepository != null)
+            return bndRepository;
+
+        bndRepository = new BndWorkspaceRepository();
+        bndRepository.init();
+
+        return bndRepository;
+    }
+
     public synchronized static RepositoryPlugin getWorkspaceRepository() throws Exception {
         if (workspaceRepo != null)
             return workspaceRepo;
@@ -212,6 +223,7 @@ public class Central {
         workspace.addBasicPlugin(new WorkspaceListener(workspace));
         workspace.addBasicPlugin(Activator.instance.repoListenerTracker);
         workspace.addBasicPlugin(getWorkspaceR5Repository());
+        workspace.addBasicPlugin(getBndWorkspaceRepository());
 
         // Initialize projects in synchronized block
         workspace.getBuildOrder();

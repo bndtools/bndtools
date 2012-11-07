@@ -245,7 +245,12 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
                     errors.add(String.format("Failed to convert file %s to Eclipse path", file));
                 }
                 if (p != null) {
-                    if (c.getType() == Container.TYPE.PROJECT) {
+
+                    //[cs] if it's a project, but not in the eclipse workspace, then make
+                    // it a "LibraryEntry"
+                    IJavaProject j = Central.getJavaProject(c.getProject());
+
+                    if (c.getType() == Container.TYPE.PROJECT && j != null) {
                         IResource resource = ResourcesPlugin.getWorkspace().getRoot().getFile(p);
                         List<IAccessRule> rules = projectAccessRules.get(c.getProject());
                         IAccessRule[] accessRules = null;
