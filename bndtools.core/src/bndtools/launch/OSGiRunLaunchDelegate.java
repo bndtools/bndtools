@@ -44,6 +44,7 @@ public class OSGiRunLaunchDelegate extends AbstractOSGiLaunchDelegate {
     protected void initialiseBndLauncher(ILaunchConfiguration configuration, Project model) throws Exception {
         synchronized (model) {
             bndLauncher = model.getProjectLauncher();
+            bndLauncher.setSupportEclipse(true);
         }
         configureLauncher(configuration);
         bndLauncher.prepare();
