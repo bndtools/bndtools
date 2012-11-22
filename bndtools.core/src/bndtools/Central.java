@@ -188,14 +188,22 @@ public class Central {
     }
 
     public synchronized static Workspace getWorkspace() throws Exception {
-        if (workspace != null)
-            return workspace;
-
         IWorkspace eclipseWorkspace = ResourcesPlugin.getWorkspace();
         IProject cnfProject = eclipseWorkspace.getRoot().getProject("bnd");
 
         if (!cnfProject.exists())
             cnfProject = eclipseWorkspace.getRoot().getProject("cnf");
+
+        if (workspace != null) {
+            if (!cnfProject.exists() || !workspace.getBase().equals(cnfProject.getLocation().toFile().getParentFile())) {
+                workspace.close();
+                workspace = null;
+                workspaceRepo = null;
+                r5Repository = null;
+            } else {
+                return workspace;
+            }
+        }
 
         if (cnfProject.exists()) {
             if (!cnfProject.isOpen())
