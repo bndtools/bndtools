@@ -16,8 +16,8 @@ common-plugins: bndtools.bndplugins.repo.eclipse.EclipseRepo;path:=${build}/repo
 
 # Remote OBR
 -plugin:\
-	aQute.lib.deployer.obr.OBR;locations='https://raw.github.com/bnd/repo/master/jars/repository.xml';name='Bnd Build Repository',\
-	aQute.lib.deployer.obr.OBR;locations='https://raw.github.com/bnd/repo/master/bundles/repository.xml';name='Bnd Repository',\
+	aQute.lib.deployer.obr.OBR;locations='https://raw.github.com/bndtools/repo/v1/jars/repository.xml';name='Bnd Build Repository',\
+	aQute.lib.deployer.obr.OBR;locations='https://raw.github.com/bndtools/repo/v1/bundles/repository.xml';name='Bnd Repository',\
 	${common-plugins}
 
 # Local FileRepo
