@@ -37,8 +37,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jdt.core.JavaCore;
-
 import aQute.bnd.build.Project;
 import aQute.bnd.header.Attrs;
 import aQute.bnd.header.Parameters;
@@ -163,7 +161,7 @@ public class AnalyseBundleResolutionJob extends Job {
 
         // Calculate the manifest
         try {
-            Project bndProject = Central.getInstance().getModel(JavaCore.create(project));
+            Project bndProject = Central.getInstance().getModel(project);
             if (bndProject == null)
                 return null;
             Builder builder;

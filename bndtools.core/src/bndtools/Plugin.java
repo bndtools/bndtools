@@ -61,7 +61,7 @@ public class Plugin extends AbstractUIPlugin {
     private Activator bndActivator;
     private final List<IStartupParticipant> startupParticipants = new LinkedList<IStartupParticipant>();
 
-    private volatile ServiceTracker workspaceTracker;
+    private volatile ServiceTracker< ? ,IWorkspace> workspaceTracker;
     private volatile ServiceRegistration urlHandlerReg;
     private volatile IndexerTracker indexerTracker;
     private volatile ResourceIndexerTracker resourceIndexerTracker;
@@ -99,7 +99,7 @@ public class Plugin extends AbstractUIPlugin {
     }
 
     private void registerWorkspaceURLHandler(BundleContext context) {
-        workspaceTracker = new ServiceTracker(context, IWorkspace.class.getName(), null);
+        workspaceTracker = new ServiceTracker<Object,IWorkspace>(context, IWorkspace.class.getName(), null);
         workspaceTracker.open();
 
         Properties props = new Properties();

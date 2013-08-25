@@ -26,10 +26,9 @@ import org.eclipse.ui.IObjectActionDelegate;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 
+import bndtools.central.Central;
 import bndtools.release.nl.Messages;
-
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 
 public class ReleaseAction implements IObjectActionDelegate {
 //	@SuppressWarnings("unused")
@@ -87,7 +86,7 @@ public class ReleaseAction implements IObjectActionDelegate {
 			File file = iFile.getLocation().toFile();
 			Project project;
 			try {
-				project = Workspace.getProject(file.getParentFile());
+				project = Central.getInstance().getModel(iFile.getProject());
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}

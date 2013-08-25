@@ -67,7 +67,7 @@ public class ExportedPackageDecoratorJob extends Job implements ISchedulingRule 
         try {
             Project model = null;
             try {
-                model = Workspace.getProject(project.getLocation().toFile());
+                model = Central.getInstance().getModel(project);
             } catch (IllegalArgumentException e) {
                 // Could not find cnf, ignore
                 return Status.OK_STATUS;

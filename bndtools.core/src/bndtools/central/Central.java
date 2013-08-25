@@ -2,7 +2,6 @@ package bndtools.central;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,7 +38,8 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.Version;
 
-
+import bndtools.preferences.BndPreferences;
+import bndtools.preferences.BndWorkSpaceLocationMode;
 import aQute.bnd.build.Project;
 import aQute.bnd.build.Workspace;
 import aQute.bnd.build.WorkspaceRepository;
@@ -63,8 +63,10 @@ public class Central implements IStartupParticipant {
     static final ConcurrentMap<String,Collection<String>> containedPackageMap = new ConcurrentHashMap<String,Collection<String>>();
     static final ConcurrentMap<String,Collection<IResource>> sourceFolderMap = new ConcurrentHashMap<String,Collection<IResource>>();
 
+    static final BndPreferences prefs = new BndPreferences();
+
     private final BundleContext bundleContext;
-    private final Map<IJavaProject,Project> javaProjectToModel = new HashMap<IJavaProject,Project>();
+
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<ModelListener>();
 
     private RepositoryListenerPluginTracker repoListenerTracker;
@@ -102,24 +104,37 @@ public class Central implements IStartupParticipant {
     }
 
     public Project getModel(IJavaProject project) {
+        return getModel(project.getProject());
+    }
+
+    public Project getModel(IProject project) {
         try {
-            Project model = javaProjectToModel.get(project);
-            if (model == null) {
-                File projectDir = project.getProject().getLocation().makeAbsolute().toFile();
-                try {
+
+            Project model;//= javaProjectToModel.get(project);
+            //            if (model == null) {
+            File projectDir = project.getProject().getLocation().makeAbsolute().toFile();
+            try {
+                switch (prefs.getWorkspaceLocationMode()) {
+                case STRICT :
+                    model = getWorkspace().getProject(projectDir.getName());
+                    break;
+                case BND :
                     model = Workspace.getProject(projectDir);
-                } catch (IllegalArgumentException e) {
-                    // initialiseWorkspace();
-                    // model = Workspace.getProject(projectDir);
+                    break;
+                case ECLIPSE :
+                    model = getWorkspace().getProject(projectDir.getAbsolutePath());
+                    break;
+                default :
                     return null;
                 }
-                if (workspace == null) {
-                    model.getWorkspace();
-                }
-                if (model != null) {
-                    javaProjectToModel.put(project, model);
-                }
+                //                    model = getWorkspace().getProject(projectDir.getAbsolutePath());
+            } catch (IllegalArgumentException e) {
+                // initialiseWorkspace();
+                // model = Workspace.getProject(projectDir);
+                return null;
+
             }
+
             return model;
         } catch (Exception e) {
             // TODO do something more useful here
@@ -174,6 +189,8 @@ public class Central implements IStartupParticipant {
                                 }
                                 if (workspace.isPresent(file.getName())) {
                                     Project project = workspace.getProject(file.getName());
+
+
                                     changed.add(project);
                                 } else {
                                     // Project not created yet, so we
@@ -237,13 +254,64 @@ public class Central implements IStartupParticipant {
         if (instance == null)
             throw new IllegalStateException("Central has not been initialised");
 
-        if (workspace != null)
-            return workspace;
+        if (workspace != null) {
+            if (isWorkspaceValid())
+                return workspace;
+        }
 
         Workspace newWorkspace = null;
 
         try {
-            newWorkspace = Workspace.getWorkspace(getWorkspaceDirectory());
+            newWorkspace = new Workspace(getWorkspaceDirectory()) {
+                @Override
+                public Collection<Project> getAllProjects() throws Exception {
+                    if (prefs.getWorkspaceLocationMode() == BndWorkSpaceLocationMode.ECLIPSE)
+                        return super.getCurrentProjects();
+                    return super.getAllProjects();
+                }
+
+                final Map<String,Project> models = newHashMap();
+
+                @Override
+                public Project getProject(String bsn) throws Exception {
+                    Project project = super.getProject(bsn);
+                    if (prefs.getWorkspaceLocationMode() == BndWorkSpaceLocationMode.ECLIPSE)
+                        synchronized (models) {
+                            if (project == null) {
+                                return models.get(bsn);
+                            } else if (!project.getName().equals(bsn)) {
+                                models.put(project.getName(), project);
+                            }
+                        }
+                    return project;
+                }
+
+                @Override
+                public boolean isPresent(String name) {
+                    return super.isPresent(name) ? true : models.containsKey(name);
+                }
+
+                final Map<String,Project> models = newHashMap();
+
+                @Override
+                public Project getProject(String bsn) throws Exception {
+                    Project project = super.getProject(bsn);
+                    if (prefs.getWorkspaceLocationMode() == BndWorkSpaceLocationMode.ECLIPSE)
+                        synchronized (models) {
+                            if (project == null) {
+                                return models.get(bsn);
+                            } else if (!project.getName().equals(bsn)) {
+                                models.put(project.getName(), project);
+                            }
+                        }
+                    return project;
+                }
+
+                @Override
+                public boolean isPresent(String name) {
+                    return super.isPresent(name) ? true : models.containsKey(name);
+                }
+            };
 
             newWorkspace.addBasicPlugin(new WorkspaceListener(newWorkspace));
             newWorkspace.addBasicPlugin(instance.repoListenerTracker);
@@ -270,6 +338,16 @@ public class Central implements IStartupParticipant {
                 newWorkspace.close();
             }
             throw e;
+        }
+    }
+
+    private static boolean isWorkspaceValid() {
+        if (workspace == null)
+            return false;
+        try {
+            return workspace.getBase().equals(getWorkspaceDirectory());
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -314,7 +392,8 @@ public class Central implements IStartupParticipant {
     }
 
     public static boolean isCnfChanged(IResourceDelta delta) {
-
+        if (!isWorkspaceValid())
+            return true;
         final AtomicBoolean result = new AtomicBoolean(false);
         try {
             delta.accept(new IResourceDeltaVisitor() {

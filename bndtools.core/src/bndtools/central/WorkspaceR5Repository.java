@@ -25,7 +25,6 @@ import org.osgi.service.log.LogService;
 import org.osgi.service.repository.Repository;
 
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 import aQute.bnd.deployer.repository.CapabilityIndex;
 import aQute.bnd.deployer.repository.api.IRepositoryContentProvider;
 import aQute.bnd.deployer.repository.api.IRepositoryIndexProcessor;
@@ -51,7 +50,7 @@ public class WorkspaceR5Repository implements Repository {
     void init() throws Exception {
         IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
         for (IProject project : projects) {
-            Project model = Workspace.getProject(project.getLocation().toFile());
+            Project model = Central.getInstance().getModel(project);
             if (model != null) {
                 File targetDir = getTarget(model);
                 if (targetDir != null) {

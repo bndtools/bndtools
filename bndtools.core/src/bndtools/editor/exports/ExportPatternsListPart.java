@@ -53,7 +53,6 @@ import org.eclipse.ui.forms.widgets.FormToolkit;
 import org.eclipse.ui.ide.ResourceUtil;
 
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.ExportedPackage;
 import aQute.bnd.header.Attrs;
@@ -244,8 +243,7 @@ public class ExportPatternsListPart extends PkgPatternsListPart<ExportedPackage>
             File bndFile = model.getBndResource();
             IPath path = Central.toPath(bndFile);
             IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
-            File projectDir = resource.getProject().getLocation().toFile();
-            project = Workspace.getProject(projectDir);
+            project = Central.getInstance().getModel(resource.getProject());
         } catch (Exception e) {
             logger.logError("Error getting project from editor model", e);
         }

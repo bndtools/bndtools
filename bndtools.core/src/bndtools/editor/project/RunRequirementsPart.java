@@ -66,7 +66,6 @@ import org.osgi.resource.Namespace;
 import org.osgi.resource.Requirement;
 
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.VersionedClause;
 import aQute.bnd.osgi.Constants;
@@ -505,7 +504,7 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
             IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
             File projectDir = resource.getProject().getLocation().toFile();
             if (Project.BNDFILE.equals(resource.getName())) {
-                project = Workspace.getProject(projectDir);
+                project = Central.getInstance().getModel(resource.getProject());
             } else {
                 project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
             }

@@ -58,7 +58,7 @@ public class Activator extends AbstractUIPlugin {
 	// The shared instance
 	private static Activator plugin;
 
-	private static ServiceTracker workspaceTracker;
+	private static ServiceTracker<?,Workspace> workspaceTracker;
 	/**
 	 * The constructor
 	 */
@@ -69,7 +69,7 @@ public class Activator extends AbstractUIPlugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
-		workspaceTracker = new ServiceTracker(context, Workspace.class.getName(), null);
+		workspaceTracker = new ServiceTracker<Object,Workspace>(context, Workspace.class.getName(), null);
 		workspaceTracker.open();
 	}
 
@@ -131,7 +131,6 @@ public class Activator extends AbstractUIPlugin {
 	}
 
 	private static void loadBundleImages(ImageRegistry reg, String rootPath, String parent, String filePattern) {
-        @SuppressWarnings("unchecked")
         Enumeration<URL> en = plugin.getBundle().findEntries(rootPath + "/" + parent, filePattern, false);
         if (en == null) {
             return;
@@ -151,7 +150,7 @@ public class Activator extends AbstractUIPlugin {
     }
 
 	public static void refreshProject(Project project) throws Exception {
-		Workspace ws = getWorkspace();
+		Workspace ws = project.getWorkspace();
 		if (ws == null) {
 			return;
 		}
@@ -178,12 +177,12 @@ public class Activator extends AbstractUIPlugin {
 	}
 
 	public static Workspace getWorkspace() {
-		return (Workspace) workspaceTracker.getService();
+		return workspaceTracker.getService();
 	}
 
 	public static List<RepositoryPlugin> getRepositories() {
 
-		Workspace ws = (Workspace)workspaceTracker.getService();
+		Workspace ws = workspaceTracker.getService();
 		if (ws == null) {
 			return Collections.emptyList();
 		}
