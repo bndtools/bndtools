@@ -190,7 +190,6 @@ public class Central implements IStartupParticipant {
                                 if (workspace.isPresent(file.getName())) {
                                     Project project = workspace.getProject(file.getName());
 
-
                                     changed.add(project);
                                 } else {
                                     // Project not created yet, so we
@@ -268,27 +267,6 @@ public class Central implements IStartupParticipant {
                     if (prefs.getWorkspaceLocationMode() == BndWorkSpaceLocationMode.ECLIPSE)
                         return super.getCurrentProjects();
                     return super.getAllProjects();
-                }
-
-                final Map<String,Project> models = newHashMap();
-
-                @Override
-                public Project getProject(String bsn) throws Exception {
-                    Project project = super.getProject(bsn);
-                    if (prefs.getWorkspaceLocationMode() == BndWorkSpaceLocationMode.ECLIPSE)
-                        synchronized (models) {
-                            if (project == null) {
-                                return models.get(bsn);
-                            } else if (!project.getName().equals(bsn)) {
-                                models.put(project.getName(), project);
-                            }
-                        }
-                    return project;
-                }
-
-                @Override
-                public boolean isPresent(String name) {
-                    return super.isPresent(name) ? true : models.containsKey(name);
                 }
 
                 final Map<String,Project> models = newHashMap();
