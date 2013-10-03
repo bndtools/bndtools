@@ -10,9 +10,12 @@
  *******************************************************************************/
 package bndtools.wizards.project;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
@@ -26,8 +29,11 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
@@ -42,6 +48,7 @@ import aQute.bnd.build.Project;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.properties.Document;
 import bndtools.Plugin;
+import bndtools.central.Central;
 import bndtools.editor.model.BndProject;
 import bndtools.versioncontrol.util.VersionControlUtils;
 
@@ -118,11 +125,74 @@ abstract class AbstractNewBndProjectWizard extends JavaProjectWizard {
 
         IFile buildXmlFile = project.getProject().getFile("build.xml");
         InputStream buildXmlInput = getClass().getResourceAsStream("template_bnd_build.xml");
+
+        StringBuilder path_to_workspace = new StringBuilder();
+        IPath projPath = project.getProject().getLocation();
+
+        // Grab relative path to workspace.
+        // Try #1 -- try to find cnf directory
+        try {
+            File wsbase = Central.getWorkspace().getBase();
+            IPath wspath = new Path(wsbase.getAbsolutePath()); //Central.toPath(wsbase);
+            if (wspath.isPrefixOf(projPath)) {
+                IPath relative = projPath.makeRelativeTo(wspath);
+                for (int i = 0; i < relative.segmentCount(); i++) {
+                    if (path_to_workspace.length() > 0)
+                        path_to_workspace.append("/");
+                    path_to_workspace.append("..");
+                }
+            }
+        } catch (Exception e2) {}
+
+        if (path_to_workspace.length() == 0) {
+            // Try #2 -- make it relative to top of eclipse workspace
+            if (Platform.getLocation().isPrefixOf(projPath)) {
+                IPath relative = projPath.makeRelativeTo(Platform.getLocation());
+                for (int i = 0; i < relative.segmentCount(); i++) {
+                    if (path_to_workspace.length() > 0)
+                        path_to_workspace.append("/");
+                    path_to_workspace.append("..");
+                }
+            } else {
+                // Try #3 -- use absolute path
+                path_to_workspace.append(Platform.getLocation().toPortableString());
+            }
+        }
+
+        // Inject a few variables
+        InputStreamReader is = new InputStreamReader(buildXmlInput);
+        BufferedReader br = new BufferedReader(is);
+        StringBuffer sb = new StringBuffer();
+        try {
+            String read = br.readLine();
+            while (read != null) {
+                read = read.replaceAll("@PROJECT", project.getElementName());
+                read = read.replaceAll("@PATH_TO_WORKSPACE_ROOT", path_to_workspace.toString());
+                sb.append(read);
+                sb.append("\r\n"); // TODO -- replace with EOL characters.
+                read = br.readLine();
+            }
+        } catch (IOException e) {
+            // TODO - what to do
+        }
+
+        InputStream buildXmlInputNew = null;
+        try {
+            buildXmlInputNew = new ByteArrayInputStream(sb.toString().getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            try {
+                buildXmlInput.reset();
+            } catch (IOException e1) {
+                // TODO -- what to do..
+            }
+            buildXmlInputNew = buildXmlInput;
+        }
+
         try {
             if (buildXmlFile.exists()) {
-                buildXmlFile.setContents(buildXmlInput, false, false, progress.newChild(1));
+                buildXmlFile.setContents(buildXmlInputNew, false, false, progress.newChild(1));
             } else {
-                buildXmlFile.create(buildXmlInput, false, progress.newChild(1));
+                buildXmlFile.create(buildXmlInputNew, false, progress.newChild(1));
             }
         } finally {
             try {

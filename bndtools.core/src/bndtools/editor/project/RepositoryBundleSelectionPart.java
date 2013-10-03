@@ -18,8 +18,6 @@ import org.bndtools.api.Logger;
 import org.bndtools.core.ui.wizards.jpm.AddJpmDependenciesWizard;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.ErrorDialog;
@@ -63,7 +61,6 @@ import org.eclipse.ui.forms.widgets.Section;
 import org.eclipse.ui.part.ResourceTransfer;
 
 import aQute.bnd.build.Project;
-import aQute.bnd.build.Workspace;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.VersionedClause;
 import aQute.bnd.header.Attrs;
@@ -429,14 +426,19 @@ public abstract class RepositoryBundleSelectionPart extends SectionPart implemen
         try {
             BndEditModel model = (BndEditModel) getManagedForm().getInput();
             File bndFile = model.getBndResource();
-            IPath path = Central.toPath(bndFile);
-            IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
-            File projectDir = resource.getProject().getLocation().toFile();
-            if (Project.BNDFILE.equals(resource.getName())) {
-                project = Workspace.getProject(projectDir);
-            } else {
-                project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
-            }
+            //            IPath path = Central.toPath(bndFile);
+            //            IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+            //            File projectDir = resource.getProject().getLocation().toFile();
+            //            if (Project.BNDFILE.equals(resource.getName())) {
+            //                project = Workspace.getProject(projectDir);
+            //            } else {
+            //                project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
+            //            }
+
+            //[cs] why do they create a project above? This seems strange since Workspace.getProject
+            // should handle all of this....
+            project = Central.bndFileToProject(bndFile);
+
         } catch (Exception e) {
             logger.logError("Error getting project from editor model", e);
         }

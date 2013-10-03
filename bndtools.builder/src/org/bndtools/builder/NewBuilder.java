@@ -53,7 +53,6 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaModelMarker;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import aQute.bnd.build.Project;
@@ -664,10 +663,10 @@ public class NewBuilder extends IncrementalProjectBuilder {
         return result.toArray(new IProject[result.size()]);
     }
 
-    private void accumulateClasspath(List<File> files, IJavaProject project, boolean exports, Predicate<IClasspathContainer>... containerFilters) throws JavaModelException {
+    private void accumulateClasspath(List<File> files, IJavaProject project, boolean exports, Predicate<IClasspathContainer>... containerFilters) throws Exception {
         if (exports) {
             IPath outputPath = project.getOutputLocation();
-            files.add(getFileForPath(outputPath));
+            files.add(Central.IPathToFile(outputPath));
         }
 
         IClasspathEntry[] entries = project.getRawClasspath();
@@ -684,16 +683,16 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
             switch (entry.getEntryKind()) {
             case IClasspathEntry.CPE_LIBRARY :
-                files.add(getFileForPath(path));
+                files.add(Central.IPathToFile(path));
                 break;
             case IClasspathEntry.CPE_VARIABLE :
                 IPath resolvedPath = JavaCore.getResolvedVariablePath(path);
-                files.add(getFileForPath(resolvedPath));
+                files.add(Central.IPathToFile(resolvedPath));
                 break;
             case IClasspathEntry.CPE_SOURCE :
                 IPath outputLocation = entry.getOutputLocation();
                 if (exports && outputLocation != null)
-                    files.add(getFileForPath(outputLocation));
+                    files.add(Central.IPathToFile(outputLocation));
                 break;
             case IClasspathEntry.CPE_CONTAINER :
                 IClasspathContainer container = JavaCore.getClasspathContainer(path, project);
@@ -716,15 +715,15 @@ public class NewBuilder extends IncrementalProjectBuilder {
         }
     }
 
-    private static File getFileForPath(IPath path) {
-        File file;
-        IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
-        if (resource != null && resource.exists())
-            file = resource.getLocation().toFile();
-        else
-            file = path.toFile();
-        return file;
-    }
+    //    private static File getFileForPath(IPath path) {
+    //        File file;
+    //        IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
+    //        if (resource != null && resource.exists())
+    //            file = resource.getLocation().toFile();
+    //        else
+    //            file = path.toFile();
+    //        return file;
+    //    }
 
     private boolean hasBlockingErrors() {
         try {

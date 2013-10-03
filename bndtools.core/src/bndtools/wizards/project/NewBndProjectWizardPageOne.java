@@ -85,8 +85,11 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
 
     @Override
     public URI getProjectLocationURI() {
-        if (locationGroup.isLocationInWorkspace())
+        // At top of workspace should be null. If deeper, providing the URI
+        // seems to allow it to work.
+        if (locationGroup.isLocationAtTopOfWorkspace()) {
             return null;
+        }
         return URIUtil.toURI(locationGroup.getLocation());
     }
 
