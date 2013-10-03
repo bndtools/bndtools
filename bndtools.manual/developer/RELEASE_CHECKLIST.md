@@ -27,15 +27,24 @@ The versions to use:
 Release Checklist for Bndtools
 ==============================
 
+Update Whats New
+----------------
+
+Create a whatsnewA-B-C.html page in the bndtools.github.com repo.
+
 Update Versions
 ---------------
 
 1. Update `base-version` in `cnf/build.bnd`.
 2. Update versions in
-    * `bndtools.build/feature/ace/feature.xml`
-    * `bndtools.build/feature/jarviewer/feature.xml`
-    * `bndtools.build/feature/main/feature.xml`
-    * `bndtools.build/feature/category.xml`
+    * `build/feature/extras/ace/feature.xml`
+    * `build/feature/extras/amdatu/feature.xml`
+    * `build/feature/extras/category.xml`
+    * `build/feature/extras/dm/feature.xml`
+    * `build/feature/main/bndtools/feature.xml`
+    * `build/feature/main/category.xml`
+    * `build/feature/main/jarviewer/feature.xml`
+    * `bndtools.core/resources/intro/whatsnewExtensionContent.xml`
 
 Git Tag
 -------
