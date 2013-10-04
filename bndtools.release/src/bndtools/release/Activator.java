@@ -58,7 +58,7 @@ public class Activator extends AbstractUIPlugin {
 	// The shared instance
 	private static Activator plugin;
 
-	private static ServiceTracker<?,Workspace> workspaceTracker;
+	private static ServiceTracker workspaceTracker;
 	/**
 	 * The constructor
 	 */
@@ -69,7 +69,7 @@ public class Activator extends AbstractUIPlugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
-		workspaceTracker = new ServiceTracker<Object,Workspace>(context, Workspace.class.getName(), null);
+		workspaceTracker = new ServiceTracker(context, Workspace.class.getName(), null);
 		workspaceTracker.open();
 	}
 
@@ -177,12 +177,12 @@ public class Activator extends AbstractUIPlugin {
 	}
 
 	public static Workspace getWorkspace() {
-		return workspaceTracker.getService();
+		return (Workspace) workspaceTracker.getService();
 	}
 
 	public static List<RepositoryPlugin> getRepositories() {
 
-		Workspace ws = workspaceTracker.getService();
+		Workspace ws = (Workspace) workspaceTracker.getService();
 		if (ws == null) {
 			return Collections.emptyList();
 		}

@@ -2,7 +2,7 @@ package bndtools.types;
 
 import java.io.Serializable;
 
-public class Pair<A, B> implements Serializable {
+public class Pair<A, B> implements Serializable, Cloneable {
 
     private static final long serialVersionUID = 1L;
 
@@ -64,8 +64,9 @@ public class Pair<A, B> implements Serializable {
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Pair<A,B> clone() {
-        return new Pair<A,B>(first, second);
+    public Pair<A,B> clone() throws CloneNotSupportedException {
+        return (Pair<A,B>) super.clone();
     }
 }

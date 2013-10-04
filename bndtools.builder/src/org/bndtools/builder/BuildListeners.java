@@ -21,7 +21,7 @@ public class BuildListeners {
     private static final ILogger logger = Logger.getLogger(BuildListeners.class);
 
     private final List<BuildListener> listeners;
-    private final ServiceTracker<BuildListener,BuildListener> listenerTracker;
+    private final ServiceTracker listenerTracker;
 
     public BuildListeners() {
         IConfigurationElement[] elements = Platform.getExtensionRegistry().getConfigurationElementsFor(BndtoolsConstants.CORE_PLUGIN_ID, "buildListeners");
@@ -38,7 +38,7 @@ public class BuildListeners {
 
         BundleContext context = FrameworkUtil.getBundle(BuildListeners.class).getBundleContext();
 
-        listenerTracker = new ServiceTracker<BuildListener,BuildListener>(context, BuildListener.class.getName(), null);
+        listenerTracker = new ServiceTracker(context, BuildListener.class.getName(), null);
         listenerTracker.open();
     }
 

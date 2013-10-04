@@ -1,7 +1,6 @@
 package bndtools.preferences;
 
 import org.eclipse.jface.preference.IPreferenceStore;
-
 import bndtools.Plugin;
 import bndtools.versioncontrol.VersionControlSystem;
 
