@@ -7,9 +7,10 @@ show allResults
 [exports] = bndtools.api.* bndtools.types.* bndtools.editor.model.* bndtools.model.clauses.*
 [non-exports] = [all] excluding [exports]
 [eclipse-internals] = org.eclipse.*.internal.*
+[cycles] = [all] excluding bndtools.Plugin
 
 # Absolutely no package cycles!!
-check absenceOfPackageCycles > 1 in [all]
+check absenceOfPackageCycles > 1 in [cycles] 
 
 # Layering issue: util packages must not depend on anything
 check [util] independentOf [non-util]
