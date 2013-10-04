@@ -134,7 +134,6 @@ public class Central implements IStartupParticipant {
                 return null;
 
             }
-
             return model;
         } catch (Exception e) {
             // TODO do something more useful here
@@ -189,7 +188,6 @@ public class Central implements IStartupParticipant {
                                 }
                                 if (workspace.isPresent(file.getName())) {
                                     Project project = workspace.getProject(file.getName());
-
                                     changed.add(project);
                                 } else {
                                     // Project not created yet, so we
@@ -254,7 +252,7 @@ public class Central implements IStartupParticipant {
             throw new IllegalStateException("Central has not been initialised");
 
         if (workspace != null) {
-            if (isWorkspaceValid())
+            if (isWorkspaceReady())
                 return workspace;
         }
 
@@ -319,16 +317,6 @@ public class Central implements IStartupParticipant {
         }
     }
 
-    private static boolean isWorkspaceValid() {
-        if (workspace == null)
-            return false;
-        try {
-            return workspace.getBase().equals(getWorkspaceDirectory());
-        } catch (CoreException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public synchronized static void onWorkspaceInit(Function<Workspace,Void> callback) {
         if (workspace != null)
             callback.run(workspace);
@@ -370,7 +358,7 @@ public class Central implements IStartupParticipant {
     }
 
     public static boolean isCnfChanged(IResourceDelta delta) {
-        if (!isWorkspaceValid())
+        if (!isWorkspaceReady())
             return true;
         final AtomicBoolean result = new AtomicBoolean(false);
         try {
@@ -569,4 +557,15 @@ public class Central implements IStartupParticipant {
             sourceFolderMap.put(key, sourceFolders);
         }
     }
+
+    public static boolean isWorkspaceReady() {
+        if (workspace == null)
+            return false;
+        try {
+            return workspace.getBase().equals(getWorkspaceDirectory());
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

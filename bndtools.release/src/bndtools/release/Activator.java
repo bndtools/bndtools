@@ -131,6 +131,7 @@ public class Activator extends AbstractUIPlugin {
 	}
 
 	private static void loadBundleImages(ImageRegistry reg, String rootPath, String parent, String filePattern) {
+        @SuppressWarnings("unchecked")
         Enumeration<URL> en = plugin.getBundle().findEntries(rootPath + "/" + parent, filePattern, false);
         if (en == null) {
             return;
@@ -150,7 +151,7 @@ public class Activator extends AbstractUIPlugin {
     }
 
 	public static void refreshProject(Project project) throws Exception {
-		Workspace ws = project.getWorkspace();
+		Workspace ws = getWorkspace();
 		if (ws == null) {
 			return;
 		}
@@ -182,7 +183,7 @@ public class Activator extends AbstractUIPlugin {
 
 	public static List<RepositoryPlugin> getRepositories() {
 
-		Workspace ws = (Workspace) workspaceTracker.getService();
+		Workspace ws = (Workspace)workspaceTracker.getService();
 		if (ws == null) {
 			return Collections.emptyList();
 		}

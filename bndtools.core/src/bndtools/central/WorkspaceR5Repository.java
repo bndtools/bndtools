@@ -15,6 +15,7 @@ import java.util.Map.Entry;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
+import org.bndtools.utils.Function;
 import org.bndtools.utils.log.LogServiceAdapter;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -25,6 +26,7 @@ import org.osgi.service.log.LogService;
 import org.osgi.service.repository.Repository;
 
 import aQute.bnd.build.Project;
+import aQute.bnd.build.Workspace;
 import aQute.bnd.deployer.repository.CapabilityIndex;
 import aQute.bnd.deployer.repository.api.IRepositoryContentProvider;
 import aQute.bnd.deployer.repository.api.IRepositoryIndexProcessor;
@@ -48,6 +50,25 @@ public class WorkspaceR5Repository implements Repository {
     WorkspaceR5Repository() {}
 
     void init() throws Exception {
+
+        if (!Central.isWorkspaceReady()) {
+            Central.onWorkspaceInit(new Function<Workspace,Void>() {
+
+                public Void run(Workspace a) {
+                    try {
+                        setupProjects();
+                    } catch (Exception e) {
+                        logger.logError("Error initializing workspace repository", e);
+                    }
+                    return null;
+                }
+            });
+        } else {
+            setupProjects();
+        }
+    }
+
+    void setupProjects() throws Exception {
         IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
         for (IProject project : projects) {
             Project model = Central.getInstance().getModel(project);

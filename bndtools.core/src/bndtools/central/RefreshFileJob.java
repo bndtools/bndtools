@@ -11,6 +11,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 
+
 public class RefreshFileJob extends WorkspaceJob {
 
     private final boolean derived;
