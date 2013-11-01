@@ -115,8 +115,9 @@
 
 		<!-- Generate R5 index for core -->
 		<taskdef classpath="${basedir}/repoindex-ant-0.0.1.jar" resource="taskdef.properties"/>
-		<repoindex name="Bndtools" pretty="false" out="${target}/p2/index.xml.gz" rooturl="${target}/p2">
-			<fileset dir="${target}/p2/plugins" includes="*.jar"/>
+		<property name="target2" location="${target}" />
+		<repoindex name="Bndtools" pretty="false" out="${target2}/p2/index.xml.gz" rooturl="${target2}/p2">
+			<fileset dir="${target2}/p2/plugins" includes="*.jar"/>
 		</repoindex>
 
 		<!-- Build the archive -->
