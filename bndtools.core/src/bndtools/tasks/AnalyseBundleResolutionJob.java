@@ -37,7 +37,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jdt.core.JavaCore;
 
 import aQute.bnd.build.Project;
 import aQute.bnd.header.Attrs;
@@ -45,6 +44,7 @@ import aQute.bnd.header.Parameters;
 import aQute.bnd.osgi.Builder;
 import aQute.bnd.osgi.Clazz;
 import aQute.bnd.osgi.Constants;
+import aQute.bnd.osgi.Descriptors;
 import aQute.bnd.osgi.Descriptors.PackageRef;
 import aQute.bnd.osgi.Jar;
 import aQute.bnd.osgi.Processor;
@@ -163,7 +163,7 @@ public class AnalyseBundleResolutionJob extends Job {
 
         // Calculate the manifest
         try {
-            Project bndProject = Central.getInstance().getModel(JavaCore.create(project));
+            Project bndProject = Central.getInstance().getModel(project);
             if (bndProject == null)
                 return null;
             Builder builder;
@@ -200,7 +200,8 @@ public class AnalyseBundleResolutionJob extends Job {
         Map<PackageRef,List<PackageRef>> uses = builder.getUses();
         for (Entry<String,Attrs> entry : exportsMap.entrySet()) {
             String pkgName = Processor.removeDuplicateMarker(entry.getKey());
-            ExportPackage export = new ExportPackage(pkgName, entry.getValue(), uses.get(pkgName));
+            PackageRef pkgRef = new Descriptors().getPackageRef(pkgName);
+            ExportPackage export = new ExportPackage(pkgName, entry.getValue(), uses.get(pkgRef));
             List<ExportPackage> exportList = exports.get(export.getName());
             if (exportList == null) {
                 exportList = new LinkedList<ExportPackage>();

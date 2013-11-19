@@ -28,7 +28,6 @@ import org.eclipse.ui.PlatformUI;
 
 import bndtools.central.Central;
 import bndtools.release.nl.Messages;
-
 import aQute.bnd.build.Project;
 
 public class ReleaseAction implements IObjectActionDelegate {
@@ -87,7 +86,7 @@ public class ReleaseAction implements IObjectActionDelegate {
 			File file = iFile.getLocation().toFile();
 			Project project;
 			try {
-				project = Central.getProject(file.getParentFile());
+				project = Central.getInstance().getModel(iFile.getProject());
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}

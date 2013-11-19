@@ -1,7 +1,6 @@
 package bndtools.preferences;
 
 import org.eclipse.jface.preference.IPreferenceStore;
-
 import bndtools.Plugin;
 import bndtools.versioncontrol.VersionControlSystem;
 
@@ -17,6 +16,7 @@ public class BndPreferences {
     private static final String PREF_EDITOR_OPEN_SOURCE_TAB = "editorOpenSourceTab";
     private static final String PREF_VCS_CREATE_IGNORE_FILES = "vcsCreateIgnoreFiles";
     private static final String PREF_VCS_VCS = "vcsVcs";
+    private static final String PREF_WORKSPACE_LOCATION_MODE = "bndworkspaceResolutionMode";
 
     private final IPreferenceStore store;
 
@@ -27,6 +27,7 @@ public class BndPreferences {
         store.setDefault(PREF_WARN_EXISTING_LAUNCH, true);
         store.setDefault(PREF_VCS_CREATE_IGNORE_FILES, true);
         store.setDefault(PREF_VCS_VCS, VersionControlSystem.GIT.ordinal());
+        store.setDefault(PREF_WORKSPACE_LOCATION_MODE, BndWorkSpaceLocationMode.STRICT.name());
     }
 
     public void setNoAskPackageInfo(boolean noAskPackageInfo) {
@@ -111,5 +112,13 @@ public class BndPreferences {
 
     public int getVcsVcs() {
         return store.getInt(PREF_VCS_VCS);
+    }
+
+    public void setWorkspaceLocationMode(BndWorkSpaceLocationMode mode) {
+        store.setValue(PREF_WORKSPACE_LOCATION_MODE, mode.name());
+    }
+
+    public BndWorkSpaceLocationMode getWorkspaceLocationMode() {
+        return BndWorkSpaceLocationMode.valueOf(store.getString(PREF_WORKSPACE_LOCATION_MODE));
     }
 }

@@ -432,7 +432,7 @@ public abstract class RepositoryBundleSelectionPart extends SectionPart implemen
             IFile resource = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
             File projectDir = resource.getProject().getLocation().toFile();
             if (Project.BNDFILE.equals(resource.getName())) {
-                project = Central.getProject(projectDir);
+                project = Central.getInstance().getModel(resource.getProject());
             } else {
                 project = new Project(Central.getWorkspace(), projectDir, resource.getLocation().toFile());
             }

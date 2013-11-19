@@ -49,7 +49,7 @@ public class RefreshFileJob extends WorkspaceJob {
     @Override
     public IStatus runInWorkspace(IProgressMonitor monitor) throws CoreException {
         resource.refreshLocal(depth, monitor);
-        resource.setDerived(derived);
+        resource.setDerived(derived, monitor);
 
         return Status.OK_STATUS;
     }

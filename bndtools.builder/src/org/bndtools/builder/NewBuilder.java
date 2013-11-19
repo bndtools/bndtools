@@ -109,7 +109,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
             listeners.fireBuildStarting(myProject);
             Project model = null;
             try {
-                model = Central.getProject(myProject.getLocation().toFile());
+                model = Central.getInstance().getModel(myProject);
             } catch (Exception e) {
                 clearBuildMarkers();
                 addBuildMarkers(e.getMessage(), IMarker.SEVERITY_ERROR);
@@ -206,7 +206,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
     protected void clean(IProgressMonitor monitor) throws CoreException {
         try {
             IProject myProject = getProject();
-            Project model = Central.getProject(myProject.getLocation().toFile());
+            Project model = Central.getInstance().getModel(myProject);
             if (model == null)
                 return;
 
@@ -839,7 +839,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
         ProjectDeltaVisitor(final IProject project, final Set<File> changedFiles) throws Exception {
             this.changedFiles = changedFiles;
-            this.model = Central.getProject(project.getLocation().toFile());
+            this.model = Central.getInstance().getModel(project);
             if (this.model == null) {
                 this.targetDirFullPath = null;
                 return;

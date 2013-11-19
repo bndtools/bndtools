@@ -21,6 +21,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import aQute.bnd.build.Project;
 import bndtools.preferences.BndPreferences;
+import bndtools.preferences.BndWorkSpaceLocationMode;
 import bndtools.utils.ModificationLock;
 import bndtools.versioncontrol.VersionControlSystem;
 import bndtools.wizards.workspace.CnfSetupWizard;
@@ -40,6 +41,7 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
     private boolean editorOpenSourceTab = false;
     private boolean vcsCreateIgnoreFiles = true;
     private int vcsVcs = VersionControlSystem.GIT.ordinal();
+    private int workspaceMode = BndWorkSpaceLocationMode.STRICT.ordinal();
 
     @Override
     protected Control createContents(Composite parent) {
@@ -48,6 +50,14 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         // Create controls
         Group cnfCheckGroup = new Group(composite, SWT.NONE);
         cnfCheckGroup.setText(Messages.BndPreferencePage_cnfCheckGroup);
+
+        final Combo cmbWorkspace = new Combo(cnfCheckGroup, SWT.READ_ONLY);
+        BndWorkSpaceLocationMode[] workspaceEntries = BndWorkSpaceLocationMode.values();
+        String[] workspaceItems = new String[workspaceEntries.length];
+        for (int i = 0; i < workspaceEntries.length; i++) {
+            workspaceItems[i] = workspaceEntries[i].name();
+        }
+        cmbWorkspace.setItems(workspaceItems);
 
         final Button btnNoCheckCnf = new Button(cnfCheckGroup, SWT.CHECK);
         btnNoCheckCnf.setText(MessageFormat.format(Messages.BndPreferencePage_btnNoCheckCnf, Project.BNDCNF));
@@ -131,6 +141,7 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         btnEditorOpenSourceTab.setSelection(editorOpenSourceTab);
         btnVcsCreateIgnoreFiles.setSelection(vcsCreateIgnoreFiles);
         cmbVcs.select(vcsVcs);
+        cmbWorkspace.select(workspaceMode);
 
         // Listeners
         SelectionAdapter adapter = new SelectionAdapter() {
@@ -203,6 +214,12 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
                 vcsVcs = cmbVcs.getSelectionIndex();
             }
         });
+        cmbWorkspace.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                workspaceMode = cmbWorkspace.getSelectionIndex();
+            }
+        });
 
         // Layout
         GridLayout layout;
@@ -232,6 +249,8 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         btnNoCheckCnf.setLayoutData(gd);
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
         btnCheckCnfNow.setLayoutData(gd);
+        gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        cmbWorkspace.setLayoutData(gd);
 
         grpDebugging.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
         grpDebugging.setLayout(new GridLayout(2, false));
@@ -247,6 +266,7 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         vcsGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
         vcsGroup.setLayout(new GridLayout(2, false));
         cmbVcs.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
         return composite;
     }
 
@@ -261,7 +281,7 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         prefs.setEditorOpenSourceTab(editorOpenSourceTab);
         prefs.setVcsCreateIgnoreFiles(vcsCreateIgnoreFiles);
         prefs.setVcsVcs(vcsVcs);
-
+        prefs.setWorkspaceLocationMode(BndWorkSpaceLocationMode.values()[workspaceMode]);
         return true;
     }
 
@@ -276,5 +296,6 @@ public class BndPreferencePage extends PreferencePage implements IWorkbenchPrefe
         editorOpenSourceTab = prefs.getEditorOpenSourceTab();
         vcsCreateIgnoreFiles = prefs.getVcsCreateIgnoreFiles();
         vcsVcs = prefs.getVcsVcs();
+        workspaceMode = prefs.getWorkspaceLocationMode().ordinal();
     }
 }

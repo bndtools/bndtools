@@ -1008,7 +1008,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
     @Override
     protected void handleFieldChanged(String fieldName) {
         super.handleFieldChanged(fieldName);
-        if (fieldName == CONTAINER) {
+        if (fieldName.equals(CONTAINER)) {
             fPackageStatus = packageChanged();
             fEnclosingTypeStatus = enclosingTypeChanged();
             fTypeNameStatus = typeNameChanged();

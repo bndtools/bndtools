@@ -77,7 +77,7 @@ public class ResolutionWizard extends Wizard {
         // Open stream for physical paths list in target dir
         PrintStream pathsStream = null;
         try {
-            Project project = Central.getProject(file.getProject().getLocation().toFile());
+            Project project = Central.getInstance().getModel(file.getProject());
             File targetDir = project.getTarget();
             if (!targetDir.exists() && !targetDir.mkdirs()) {
                 throw new IOException("Could not create directory " + targetDir);
