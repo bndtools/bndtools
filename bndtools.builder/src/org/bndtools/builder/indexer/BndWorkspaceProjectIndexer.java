@@ -46,10 +46,12 @@ public class BndWorkspaceProjectIndexer implements IStartupParticipant {
                     
                     // If no eclipse relating project OR if eclipse project is closed, then
                     // index
-                    IProject p = Central.getProject(model);
-                    if (p != null && p.isOpen()) {
-                        continue;
-                    }
+                    //[cs] 1/10/2014 update -- turns out that if you have open projects and then build from command line, the .index is deleted, but then
+                    // never recreated... Commenting out this code should make it so that all .index file will be regenerated eventually. 
+//                    IProject p = Central.getProject(model);
+//                    if (p != null && p.isOpen()) {
+//                        continue;
+//                    }
                     
                     File targetDir = model.getTarget();
                     if (targetDir != null) {
