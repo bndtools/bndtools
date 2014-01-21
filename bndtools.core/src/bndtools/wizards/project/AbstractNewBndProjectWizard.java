@@ -75,7 +75,12 @@ abstract class AbstractNewBndProjectWizard extends JavaProjectWizard {
             "static-method", "unused"
     })
     protected BndEditModel generateBndModel(IProgressMonitor monitor) {
-        return new BndEditModel();
+        try {
+            return new BndEditModel(Central.getWorkspace());
+        } catch (Exception e) {
+            logger.logError("Unable to create BndEditModel with Workspace, defaulting to without Workspace", e);
+            return new BndEditModel();
+        }
     }
 
     /**

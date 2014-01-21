@@ -144,7 +144,12 @@ public class R5LabelFormatter {
     private static Pattern getFilterPattern(String name) {
         Pattern pattern = FILTER_PATTERNS.get(name);
         if (pattern == null) {
-            pattern = Pattern.compile("\\(" + name + "[<>]?=([^\\)]*)\\)");
+            // Group match #1 is used in applyPattern() down below.
+            if (name.contains("$")) {
+                pattern = Pattern.compile("\\{(.*?)\\}");
+            } else {
+                pattern = Pattern.compile("\\(" + Pattern.quote(name) + "[<>]?=([^\\)]*)\\)");
+            }
             Pattern existing = FILTER_PATTERNS.putIfAbsent(name, pattern);
             if (existing != null)
                 pattern = existing;
