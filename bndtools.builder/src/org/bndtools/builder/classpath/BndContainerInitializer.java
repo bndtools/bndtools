@@ -20,6 +20,7 @@ import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
 import org.bndtools.api.ModelListener;
 import org.bndtools.utils.jar.JarUtils;
+import org.eclipse.core.internal.jobs.JobStatus;
 import org.eclipse.core.internal.utils.FileUtil;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IMarker;
@@ -32,6 +33,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.ClasspathContainerInitializer;
 import org.eclipse.jdt.core.IAccessRule;
 import org.eclipse.jdt.core.IClasspathContainer;
@@ -120,7 +122,7 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
         return false;
     }
 
-    private static void calculateAndUpdateClasspathEntries(IJavaProject project, Collection< ? super String> errors) throws CoreException {
+    private static void calculateAndUpdateClasspathEntries(final IJavaProject project, Collection< ? super String> errors) throws CoreException {
         IClasspathEntry[] entries = new IClasspathEntry[0];
         Project model;
         try {
@@ -132,7 +134,25 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
         }
 
         try {
-            if (model != null) {
+            if (model == null) {
+                Job j = new Job("Add projectsearch error marker job") {
+                    @Override
+                    protected IStatus run(IProgressMonitor arg0) {
+                        try {
+                            IMarker marker = project.getProject().createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
+                            marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+                            marker.setAttribute(IMarker.MESSAGE, "Project not in -projectsearch? Update cnf/build.bnd, then restart eclipse.");
+                        } catch (CoreException e) {
+                            logger.logError("Unable to set projectsearch error marker", e);
+                            return new JobStatus(JobStatus.ERROR, this, "Unable to set projectsearch error marker");
+                        }
+                        return JobStatus.OK_STATUS;
+                    }
+                };
+                //[cs] Don't run during a build.
+                j.setRule(project.getProject().getWorkspace().getRuleFactory().buildRule());
+                j.schedule();
+            } else {
                 List<IClasspathEntry> classpath = calculateProjectClasspath(model, project, errors);
                 if (classpath != null) {
                     classpath = BndContainerSourceManager.loadAttachedSources(project, classpath);
