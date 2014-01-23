@@ -95,10 +95,12 @@ public class WorkspaceR5Repository implements Repository {
     public void loadProjectIndex(final IProject project, InputStream index, URI baseUri) {
         synchronized (projectMap) {
             try {
+                //System.out.println("WorkspaceR5Repository.loadProjectIndex: " + project.getName());
                 cleanProject(project);
 
                 IRepositoryIndexProcessor processor = new IRepositoryIndexProcessor() {
                     public void processResource(Resource resource) {
+                        //System.out.println("WorkspaceR5Repository.loadProjectIndex.IRepositoryIndexProcessor:processResource() for " + project.getName());
                         addResource(project, resource);
                     }
 

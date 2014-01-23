@@ -96,11 +96,11 @@ public class BndWorkspaceProjectIndexer implements IStartupParticipant {
     }
     
     private void scheduleFirst() {
-        new BndWorkspaceProjectIndexerJob().schedule(1 * 60 * 1000); // 1 minutes
+        new BndWorkspaceProjectIndexerJob().schedule(30 * 1000); // 30 seconds
     }
 
     private void scheduleRecheck() {
-        new BndWorkspaceProjectIndexerJob().schedule(5 * 60 * 1000); // 5 minutes
+        new BndWorkspaceProjectIndexerJob().schedule(60 * 1000); // 1 minutes
     }
     
     @Override
@@ -109,6 +109,8 @@ public class BndWorkspaceProjectIndexer implements IStartupParticipant {
         Central.onWorkspaceInit(new Runnable() {
             @Override
             public void run() {
+                logger.logInfo("TESTING INFO!", null);
+                logger.logError("TESTING ERROR!", null);
                 scheduleFirst();
             }
         });

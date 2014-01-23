@@ -54,10 +54,12 @@ public class BndWorkspaceRepository implements Repository {
     public void loadProjectIndex(final Project project, InputStream index) {
         synchronized (projectMap) {
             try {
+                //System.out.println("BndWorkspaceRepository.loadProjectIndex: " + project.getName());
                 cleanProject(project);
 
                 IRepositoryIndexProcessor processor = new IRepositoryIndexProcessor() {
                     public void processResource(Resource resource) {
+                        //System.out.println("BndWorkspaceRepository.loadProjectIndex.IRepositoryIndexProcessor:processResource() for " + project.getName());
                         addResource(project, resource);
                     }
 
