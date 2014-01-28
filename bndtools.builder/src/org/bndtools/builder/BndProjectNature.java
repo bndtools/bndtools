@@ -15,17 +15,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.bndtools.api.BndtoolsConstants;
+import org.eclipse.core.internal.jobs.JobStatus;
 import org.eclipse.core.resources.ICommand;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IProjectNature;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
+
+import bndtools.central.Central;
 
 import aQute.bnd.build.Project;
 
@@ -80,6 +87,45 @@ public class BndProjectNature implements IProjectNature {
         desc.setBuildSpec(nu.toArray(new ICommand[nu.size()]));
     }
 
+    public static void checkForProjectSearch(final IProject project) {
+        Project model = null;
+        try {
+            model = Central.getProject(project.getProject().getLocation().toFile());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (model == null) {
+            Job j = new Job("Add projectsearch error marker job") {
+                @Override
+                protected IStatus run(IProgressMonitor arg0) {
+                    try {
+                        boolean foundit=false;
+                        for(IMarker f : project.getProject().
+                                findMarkers(BndtoolsConstants.MARKER_BND_PROBLEM, false, IResource.DEPTH_INFINITE)) {
+                            Object sid = f.getAttribute(IMarker.SOURCE_ID);
+                            if (sid != null && "PROJECTSEARCHERROR".equals(sid)) {
+                                foundit=true;
+                                break;
+                            }
+                        }
+                        if (!foundit) {
+                            IMarker marker = project.getProject().createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
+                            marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+                            marker.setAttribute(IMarker.SOURCE_ID, "PROJECTSEARCHERROR");
+                            marker.setAttribute(IMarker.MESSAGE, "Project not in -projectsearch? Update cnf/build.bnd, then restart eclipse.");
+                        }
+                    } catch (CoreException e) {
+                        return new JobStatus(JobStatus.ERROR, this, "Unable to set projectsearch error marker");
+                    }
+                    return JobStatus.OK_STATUS;
+                }
+            };
+            //[cs] Don't run during a build.
+            j.setRule(project.getProject().getWorkspace().getRuleFactory().buildRule());
+            j.schedule();
+        }
+    }
+    
     private void ensureBndBndExists() throws CoreException {
         IFile bndfile = project.getFile(Project.BNDFILE);
         if (!bndfile.exists())
@@ -124,6 +170,7 @@ public class BndProjectNature implements IProjectNature {
             public void run(IProgressMonitor monitor) throws CoreException {
                 project.setDescription(desc, monitor);
                 if (adding) {
+                    checkForProjectSearch(project);
                     ensureBndBndExists();
                     installBndClasspath();
                 } else {

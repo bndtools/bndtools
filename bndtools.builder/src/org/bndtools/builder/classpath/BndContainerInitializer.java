@@ -19,6 +19,7 @@ import org.bndtools.api.BndtoolsConstants;
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
 import org.bndtools.api.ModelListener;
+import org.bndtools.builder.BndProjectNature;
 import org.bndtools.utils.jar.JarUtils;
 import org.eclipse.core.internal.jobs.JobStatus;
 import org.eclipse.core.internal.utils.FileUtil;
@@ -135,23 +136,7 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
 
         try {
             if (model == null) {
-                Job j = new Job("Add projectsearch error marker job") {
-                    @Override
-                    protected IStatus run(IProgressMonitor arg0) {
-                        try {
-                            IMarker marker = project.getProject().createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
-                            marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
-                            marker.setAttribute(IMarker.MESSAGE, "Project not in -projectsearch? Update cnf/build.bnd, then restart eclipse.");
-                        } catch (CoreException e) {
-                            logger.logError("Unable to set projectsearch error marker", e);
-                            return new JobStatus(JobStatus.ERROR, this, "Unable to set projectsearch error marker");
-                        }
-                        return JobStatus.OK_STATUS;
-                    }
-                };
-                //[cs] Don't run during a build.
-                j.setRule(project.getProject().getWorkspace().getRuleFactory().buildRule());
-                j.schedule();
+                BndProjectNature.checkForProjectSearch(project.getProject());
             } else {
                 List<IClasspathEntry> classpath = calculateProjectClasspath(model, project, errors);
                 if (classpath != null) {
