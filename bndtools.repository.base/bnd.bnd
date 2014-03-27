@@ -33,11 +33,43 @@ jpm-template-resources: \
 	${jpm-template}/plugins/biz.aQute.repository/=${repo;biz.aQute.repository;${aQute-repository-base}},\
 	${jpm-template}/plugins/aQute.library.bndrepo/=${repo;aQute.library.bndrepo;${jpm-plugin-version}}
 
+corp-template: templates/cnfs/corp
+corp-template-resources: \
+	{${corp-template}=templates/processed/bundlehub},\
+	{${corp-template}=templates/processed/common},\
+	${corp-template}=templates/unprocessed/ant,\
+	${corp-template}=templates/unprocessed/corp,\
+	${corp-template}=templates/unprocessed/common,\
+	${corp-template}/buildrepo/=templates/repos/buildrepo,\
+	${corp-template}/buildrepo/biz.aQute.junit/=${repo;biz.aQute.junit;latest},\
+	${corp-template}/buildrepo/biz.aQute.launcher/=${repo;biz.aQute.launcher;latest},\
+	${corp-template}/localrepo/=templates/repos/localrepo,\
+	${corp-template}/releaserepo/=templates/repos/releaserepo,\
+	${corp-template}/plugins/biz.aQute.bnd/=${repo;biz.aQute.bnd;${bndlib-version-base}},\
+	${corp-template}/plugins/biz.aQute.repository/=${repo;biz.aQute.repository;${aQute-repository-base}}
+
+test-template: templates/cnfs/test
+test-template-resources: \
+	{${test-template}=templates/processed/bundlehub},\
+	{${test-template}=templates/processed/common},\
+	${test-template}=templates/unprocessed/ant,\
+	${test-template}=templates/unprocessed/test,\
+	${test-template}=templates/unprocessed/common,\
+	${test-template}/buildrepo/=templates/repos/buildrepo,\
+	${test-template}/buildrepo/biz.aQute.junit/=${repo;biz.aQute.junit;latest},\
+	${test-template}/buildrepo/biz.aQute.launcher/=${repo;biz.aQute.launcher;latest},\
+	${test-template}/localrepo/=templates/repos/localrepo,\
+	${test-template}/releaserepo/=templates/repos/releaserepo,\
+	${test-template}/plugins/biz.aQute.bnd/=${repo;biz.aQute.bnd;${bndlib-version-base}},\
+	${test-template}/plugins/biz.aQute.repository/=${repo;biz.aQute.repository;${aQute-repository-base}}
+
 Include-Resource:\
 	plugin.xml=_plugin.xml,\
 	icons/=icons,\
 	templateDocs/=templateDocs,\
 	${bundlehub-template-resources},\
-	${jpm-template-resources}
+	${jpm-template-resources},\
+	${corp-template-resources},\
+	${test-template-resources}
 
 -removeheaders: Include-Resource, Private-Package

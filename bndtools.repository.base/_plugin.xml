@@ -25,6 +25,28 @@
          version="10"
          category="AAA/Core"
       />
+      <template
+         id="corp"
+         name="Behind Corporate Firewall Configuration"
+         doc="templateDocs/CorporateConfig.xml"
+         paths="templates/cnfs/corp"
+         priority="15"
+         managed="ext/.*,plugins/.*,build-template.xml,build.properties"
+         ignores="/cache/"
+         version="0"
+         category="AAA/Core"
+      />
+      <template
+         id="test"
+         name="Testing bndtools"
+         doc="templateDocs/TestConfig.xml"
+         paths="templates/cnfs/test"
+         priority="10"
+         managed="ext/.*,plugins/.*,build-template.xml,build.properties"
+         ignores="/cache/"
+         version="10"
+         category="AAA/Core"
+      />
    </extension>
 
 </plugin>
