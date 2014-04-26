@@ -102,12 +102,23 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
 
     private final Map<String,IFormPageFactory> pageFactories = new LinkedHashMap<String,IFormPageFactory>();
 
-    private final BndEditModel model = new BndEditModel();
-    private final BndSourceEditorPage sourcePage = new BndSourceEditorPage(SOURCE_PAGE, this);
+    private final BndEditModel model;
+    private final BndSourceEditorPage sourcePage;
 
     private final Image buildFileImg = AbstractUIPlugin.imageDescriptorFromPlugin(Plugin.PLUGIN_ID, "icons/bndtools-logo-16x16.png").createImage();
 
     public BndEditor() {
+        BndEditModel model2;
+        try {
+            model2 = new BndEditModel(Central.getWorkspace());
+        } catch (Exception e) {
+            System.err.println("Unable to create BndEditModel with Workspace, defaulting to without Workspace");
+            model2 = new BndEditModel();
+        }
+        model = model2;
+
+        sourcePage = new BndSourceEditorPage(SOURCE_PAGE, this);
+
         pageFactories.put(WORKSPACE_PAGE, WorkspacePage.MAIN_FACTORY);
         pageFactories.put(WORKSPACE_EXT_PAGE, WorkspacePage.EXT_FACTORY);
         pageFactories.put(CONTENT_PAGE, BundleContentPage.FACTORY);
