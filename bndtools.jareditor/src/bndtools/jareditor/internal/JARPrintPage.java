@@ -51,13 +51,7 @@ public class JARPrintPage extends FormPage {
     public void refresh() {
         URI uri = null;
         try {
-            IEditorInput input = getEditorInput();
-            if (input instanceof IFileEditorInput) {
-                uri = ((IFileEditorInput) input).getFile().getLocationURI();
-            } else if (input instanceof IURIEditorInput) {
-                uri = ((IURIEditorInput) input).getURI();
-            }
-
+            uri = URIHelper.retrieveFileURI(getEditorInput());
             if (uri != null) {
                 text.setText(print(new File(uri)));
             }

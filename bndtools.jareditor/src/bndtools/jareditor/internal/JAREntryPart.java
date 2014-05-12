@@ -17,6 +17,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
@@ -35,6 +36,7 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IURIEditorInput;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.forms.AbstractFormPart;
 import org.eclipse.ui.forms.IFormPart;
 import org.eclipse.ui.forms.IPartSelectionListener;
@@ -177,15 +179,7 @@ public class JAREntryPart extends AbstractFormPart implements IPartSelectionList
         if (zipEntry != null && !zipEntry.isDirectory()) {
             IEditorInput input = editor.getEditorInput();
             final Display display = text.getDisplay();
-            final URI uri;
-
-            if (input instanceof IFileEditorInput) {
-                uri = ((IFileEditorInput) input).getFile().getLocationURI();
-            } else if (input instanceof IURIEditorInput) {
-                uri = ((IURIEditorInput) input).getURI();
-            } else {
-                uri = null;
-            }
+            final URI uri = URIHelper.retrieveFileURI(input);
 
             if (uri != null) {
                 displayJob = new Job("Load zip content") {
