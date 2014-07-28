@@ -117,6 +117,11 @@
 		<validator name="BSN check"
 			class="org.bndtools.builder.validate.BsnValidator" />
 	</extension>
+	
+	<extension point="bndtools.core.bndtoolsStartupParticipant">
+		<startupParticipant
+			class="org.bndtools.builder.indexer.BndWorkspaceProjectIndexer" />
+	</extension>
 
 	<extension point="bndtools.core.validators">
 		<validator name="Project paths check"

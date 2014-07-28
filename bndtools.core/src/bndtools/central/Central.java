@@ -57,6 +57,8 @@ public class Central implements IStartupParticipant {
     static WorkspaceR5Repository r5Repository = null;
     static RepositoryPlugin workspaceRepo = null;
 
+    private static BndWorkspaceRepository bndRepository;
+
     static final AtomicBoolean indexValid = new AtomicBoolean(false);
     static final ConcurrentMap<String,Map<String,SortedSet<Version>>> exportedPackageMap = new ConcurrentHashMap<String,Map<String,SortedSet<Version>>>();
     static final ConcurrentMap<String,Collection<String>> containedPackageMap = new ConcurrentHashMap<String,Collection<String>>();
@@ -67,6 +69,8 @@ public class Central implements IStartupParticipant {
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<ModelListener>();
 
     private RepositoryListenerPluginTracker repoListenerTracker;
+
+    private final Map<IProject,Project> projectToModel = new HashMap<IProject,Project>();
 
     /**
      * WARNING: Do not instantiate this class. It must be public to allow instantiation by the Eclipse registry, but it
@@ -117,6 +121,32 @@ public class Central implements IStartupParticipant {
                 }
                 if (model != null) {
                     javaProjectToModel.put(project, model);
+                }
+            }
+            return model;
+        } catch (Exception e) {
+            // TODO do something more useful here
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Project getModel(IProject project) {
+        try {
+            Project model = projectToModel.get(project);
+            if (model == null) {
+                File projectDir = project.getProject().getLocation().makeAbsolute().toFile();
+                try {
+                    model = Workspace.getProject(projectDir);
+                } catch (IllegalArgumentException e) {
+                    // initialiseWorkspace();
+                    // model = Workspace.getProject(projectDir);
+                    return null;
+                }
+                if (workspace == null) {
+                    model.getWorkspace();
+                }
+                if (model != null) {
+                    projectToModel.put(project, model);
                 }
             }
             return model;
@@ -224,6 +254,16 @@ public class Central implements IStartupParticipant {
         return r5Repository;
     }
 
+    public synchronized static BndWorkspaceRepository getBndWorkspaceRepository() throws Exception {
+        if (bndRepository != null)
+            return bndRepository;
+
+        bndRepository = new BndWorkspaceRepository();
+        //bndRepository.init();
+
+        return bndRepository;
+    }
+
     public synchronized static RepositoryPlugin getWorkspaceRepository() throws Exception {
         if (workspaceRepo != null)
             return workspaceRepo;
@@ -246,7 +286,13 @@ public class Central implements IStartupParticipant {
 
             newWorkspace.addBasicPlugin(new WorkspaceListener(newWorkspace));
             newWorkspace.addBasicPlugin(instance.repoListenerTracker);
+            newWorkspace.addBasicPlugin(getBndWorkspaceRepository());
             newWorkspace.addBasicPlugin(getWorkspaceR5Repository());
+
+            //[cs] Setting workspace earlier so BndWorkspaceRepository won't call getWorkspace and start reiniting this
+            // Need to call init() before getBuildOrder() is called below.
+            workspace = newWorkspace;
+            getBndWorkspaceRepository().init();
 
             // Initialize projects in synchronized block
             newWorkspace.getBuildOrder();
@@ -255,7 +301,7 @@ public class Central implements IStartupParticipant {
             addCnfChangeListener(newWorkspace);
 
             // The workspace has been initialized fully, set the field now
-            workspace = newWorkspace;
+            //workspace = newWorkspace;
 
             // Call the queued workspace init callbacks
             while (!workspaceInitCallbackQueue.isEmpty()) {
@@ -277,6 +323,18 @@ public class Central implements IStartupParticipant {
             callback.run(workspace);
         else
             workspaceInitCallbackQueue.add(callback);
+    }
+
+    // Bundles outside of the bndtools.core will need to use this. 
+    // (unless I want to investigate making Function usable everywhere)
+    public static void onWorkspaceInit(final Runnable runnable) {
+        onWorkspaceInit(new Function<Workspace,Void>() {
+
+            public Void run(Workspace a) {
+                runnable.run();
+                return null;
+            }
+        });
     }
 
     private static File getWorkspaceDirectory() throws CoreException {
@@ -402,6 +460,15 @@ public class Central implements IStartupParticipant {
                     return ij;
                 }
                 // current project is not a Java project
+            }
+        }
+        return null;
+    }
+
+    public static IProject getProject(Project model) {
+        for (IProject iproj : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+            if (iproj.getName().equals(model.getName())) {
+                return iproj;
             }
         }
         return null;
