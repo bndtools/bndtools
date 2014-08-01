@@ -24,6 +24,7 @@ import org.osgi.resource.Capability;
 import org.osgi.resource.Resource;
 
 import aQute.bnd.build.Project;
+import aQute.bnd.build.Workspace;
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.VersionedClause;
 import aQute.bnd.header.Attrs;
@@ -42,6 +43,7 @@ public class ResolutionWizard extends Wizard {
 
     private final ResolutionResultsWizardPage resultsPage;
     private final Comparator<Entry<String,String>> clauseAttributeSorter = new Comparator<Map.Entry<String,String>>() {
+        @Override
         public int compare(Entry<String,String> e1, Entry<String,String> e2) {
             // Reverse lexical ordering on keys
             return e2.getKey().compareTo(e1.getKey());
@@ -77,8 +79,17 @@ public class ResolutionWizard extends Wizard {
         // Open stream for physical paths list in target dir
         PrintStream pathsStream = null;
         try {
-            Project project = Central.getProject(file.getProject().getLocation().toFile());
-            File targetDir = project.getTarget();
+            File targetDir;
+
+            File projectDir = file.getProject().getLocation().toFile();
+            Project project = Central.getProject(projectDir);
+            if (project != null)
+                targetDir = project.getTarget();
+            else {
+                String targetName = Workspace.getDefaults().get("target", "generated");
+                targetDir = new File(projectDir, targetName);
+            }
+
             if (!targetDir.exists() && !targetDir.mkdirs()) {
                 throw new IOException("Could not create directory " + targetDir);
             }
@@ -94,6 +105,11 @@ public class ResolutionWizard extends Wizard {
             List<VersionedClause> runBundles = new ArrayList<VersionedClause>(resources.size());
             for (Resource resource : resources) {
                 VersionedClause runBundle = resourceToRunBundle(resource);
+
+                //[cs] Skip dups
+                if (runBundles.contains(runBundle)) {
+                    continue;
+                }
                 runBundles.add(runBundle);
 
                 if (pathsStream != null) {
@@ -108,6 +124,7 @@ public class ResolutionWizard extends Wizard {
                 }
             }
             Collections.sort(runBundles, new Comparator<VersionedClause>() {
+                @Override
                 public int compare(VersionedClause vc1, VersionedClause vc2) {
                     int diff = vc1.getName().compareTo(vc2.getName());
                     if (diff != 0)
@@ -120,7 +137,6 @@ public class ResolutionWizard extends Wizard {
                         r2 = "";
                     return r1.compareTo(r2);
                 }
-
             });
             model.setRunBundles(runBundles);
         } finally {

@@ -17,12 +17,12 @@ import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.wizard.Wizard;
 
 import bndtools.Plugin;
-
 import aQute.bnd.service.repository.SearchableRepository;
 import aQute.bnd.service.repository.SearchableRepository.ResourceDescriptor;
 
 public class AddJpmDependenciesWizard extends Wizard {
 
+    @SuppressWarnings("unused")
     private final URI uri;
     private final JpmDependencyWizardPage depsPage;
     private final Set<ResourceDescriptor> result = new HashSet<ResourceDescriptor>();
@@ -82,6 +82,7 @@ public class AddJpmDependenciesWizard extends Wizard {
         return Collections.unmodifiableSet(result);
     }
 
+    @SuppressWarnings("unused")
     private void processResource(ResourceDescriptor resource, MultiStatus status, IProgressMonitor monitor) {
         SearchableRepository repo = depsPage.getRepository();
         try {

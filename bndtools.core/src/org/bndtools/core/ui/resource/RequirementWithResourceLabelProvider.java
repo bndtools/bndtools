@@ -12,17 +12,18 @@ public class RequirementWithResourceLabelProvider extends RequirementLabelProvid
 
     @Override
     public StyledString getLabel(Requirement requirement) {
-        StyledString label = super.getLabel(requirement);
 
-        if (Namespace.RESOLUTION_OPTIONAL.equals(requirement.getDirectives().get(Namespace.REQUIREMENT_RESOLUTION_DIRECTIVE)))
-            label.append(" OPTIONALLY", StyledString.QUALIFIER_STYLER);
-        label.append(" REQUIRED BY ", StyledString.QUALIFIER_STYLER);
+        StyledString label = new StyledString();
 
         Resource resource = requirement.getResource();
-        if (resource != null)
+        if (!(resource == null || resource.getCapabilities("osgi.content").isEmpty()))
             appendResourceLabel(label, resource);
-        else
-            label.append(" INITIAL");
+
+        if (Namespace.RESOLUTION_OPTIONAL.equals(requirement.getDirectives().get(Namespace.REQUIREMENT_RESOLUTION_DIRECTIVE)))
+            label.append(" optionally", StyledString.QUALIFIER_STYLER);
+        label.append(" requires ", StyledString.QUALIFIER_STYLER);
+
+        super.getLabel(label, requirement);
 
         return label;
     }
@@ -30,10 +31,13 @@ public class RequirementWithResourceLabelProvider extends RequirementLabelProvid
     protected void appendResourceLabel(StyledString label, Resource resource) {
         Capability identity = ResourceUtils.getIdentityCapability(resource);
         String name = ResourceUtils.getIdentity(identity);
-        if (name == null)
-            name = resource.toString();
-        if (name == null)
-            name = "<unknown>";
+        if (name == null) {
+            if (resource != null) {
+                name = resource.toString();
+            } else {
+                name = "<unknown>";
+            }
+        }
         label.append(name);
 
         Version version = ResourceUtils.getVersion(identity);

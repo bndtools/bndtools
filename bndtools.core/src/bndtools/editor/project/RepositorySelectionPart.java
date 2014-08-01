@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.bndtools.api.ILogger;
-import org.bndtools.api.Logger;
 import org.bndtools.utils.Function;
 import org.bndtools.utils.collections.CollectionUtils;
 import org.bndtools.utils.jface.StrikeoutStyler;
@@ -67,8 +65,6 @@ public class RepositorySelectionPart extends BndEditorPart {
     private final Image imgUp = AbstractUIPlugin.imageDescriptorFromPlugin(Plugin.PLUGIN_ID, "/icons/arrow_up.png").createImage();
     private final Image imgDown = AbstractUIPlugin.imageDescriptorFromPlugin(Plugin.PLUGIN_ID, "/icons/arrow_down.png").createImage();
 
-    private final ILogger logger = Logger.getLogger(RepositorySelectionPart.class);
-
     private final Object MESSAGE_KEY = new Object();
 
     private CheckboxTableViewer viewer;
@@ -80,7 +76,7 @@ public class RepositorySelectionPart extends BndEditorPart {
 
     /**
      * Create the SectionPart.
-     * 
+     *
      * @param parent
      * @param toolkit
      * @param style
@@ -111,16 +107,20 @@ public class RepositorySelectionPart extends BndEditorPart {
         gl_container.marginHeight = 0;
         container.setLayout(gl_container);
 
-        Table table = toolkit.createTable(container, SWT.CHECK | SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL);
-        table.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        Table table = toolkit.createTable(container, SWT.CHECK | SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL | SWT.H_SCROLL);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd.widthHint = 50;
+        table.setLayoutData(gd);
 
         viewer = new CheckboxTableViewer(table);
         viewer.setContentProvider(ArrayContentProvider.getInstance());
         viewer.setCheckStateProvider(new ICheckStateProvider() {
+            @Override
             public boolean isChecked(Object element) {
                 return isIncludedRepo(element);
             }
 
+            @Override
             public boolean isGrayed(Object element) {
                 return false;
             }
@@ -205,12 +205,14 @@ public class RepositorySelectionPart extends BndEditorPart {
         viewer.setSorter(sorter);
 
         viewer.addCheckStateListener(new ICheckStateListener() {
+            @Override
             public void checkStateChanged(CheckStateChangedEvent event) {
                 Object repo = event.getElement();
                 toggleSelection(repo);
             }
         });
         viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
                 updateButtons();
             }
@@ -285,8 +287,10 @@ public class RepositorySelectionPart extends BndEditorPart {
 
             // Load the repos and clear the error message if the Workspace is initialised later.
             Central.onWorkspaceInit(new Function<Workspace,Void>() {
+                @Override
                 public Void run(final Workspace ws) {
                     SWTConcurrencyUtil.execForControl(viewer.getControl(), true, new Runnable() {
+                        @Override
                         public void run() {
                             allRepos.clear();
                             allRepos.addAll(ws.getPlugins(Repository.class));

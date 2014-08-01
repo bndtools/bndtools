@@ -17,6 +17,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -26,9 +27,10 @@ import org.eclipse.swt.widgets.TableItem;
 
 import bndtools.release.Activator;
 import bndtools.release.ProjectDiff;
-import bndtools.release.ProjectListControl;
 import bndtools.release.ReleaseHelper;
+import bndtools.release.ReleaseHelper.MacroInfo;
 import bndtools.release.api.ReleaseOption;
+import bndtools.release.nl.Messages;
 
 public class WorkspaceReleaseDialog extends Dialog implements SelectionListener {
 
@@ -51,12 +53,12 @@ public class WorkspaceReleaseDialog extends Dialog implements SelectionListener 
 	protected Control createDialogArea(Composite parent) {
 		Composite composite = (Composite) super.createDialogArea(parent);
 
-		int screenWidth = getShell().getDisplay().getClientArea().width;
-	    int screenHeight = getShell().getDisplay().getClientArea().height;
-
 		GridData gridData = createFillGridData();
-		gridData.heightHint = Math.min(screenHeight, 500);
-		gridData.widthHint = Math.min(screenWidth, 800);
+
+		/* take 80% of the application window or 800x500 if that's bigger */
+		Point size = getParentShell().getSize();
+		gridData.widthHint = Math.max(Double.valueOf(size.x * 0.8).intValue(), 800);
+		gridData.heightHint = Math.max(Double.valueOf(size.y * 0.8).intValue(), 500);
 
 	    sashForm = new SashForm(composite, SWT.HORIZONTAL);
 	    sashForm.setLayout(createGridLayout());
@@ -79,7 +81,6 @@ public class WorkspaceReleaseDialog extends Dialog implements SelectionListener 
 		bundleRelease = new BundleTree(right);
 
 		projectListControl.setInput(projectDiffs);
-		setSelected(0);
 
         sashForm.setWeights(new int[] { 40, 60 });
 
@@ -168,11 +169,38 @@ public class WorkspaceReleaseDialog extends Dialog implements SelectionListener 
         if (bundleRelease.getReleaseOption() == null) {
             for (ProjectDiff diff : projectDiffs) {
                 if (diff.isRelease()) {
-                    Activator.message("You must specify Release option.");
+                    Activator.message(Messages.releaseOptionMustBeSpecified);
                     return;
                 }
             }
         }
+
+        // Find bundles with macros as Bundle-Version:
+        List<MacroInfo> bsns = ReleaseHelper.getBsnsWithBundleVersionMacro(projectDiffs);
+        if (bsns.size() > 0) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(Messages.macrosWillBeOverwritten1);
+            sb.append("\n\n");
+            for (MacroInfo info : bsns) {
+                sb.append("\t");
+                sb.append(info.projectDiff.getProject().getName());
+                if (!info.projectDiff.getProject().getName().equals(info.bsn)) {
+                    sb.append(" (");
+                    sb.append(info.bsn);
+                    sb.append(")");
+                }
+                sb.append("    ");
+                sb.append(info.macro);
+                sb.append("\n");
+            }
+            sb.append("\n");
+            sb.append(Messages.macrosWillBeOverwritten2);
+
+            if (!Activator.confirmationMessage(sb.toString())) {
+                return;
+            }
+        }
+
         this.releaseOption = bundleRelease.getReleaseOption();
         super.okPressed();
     }

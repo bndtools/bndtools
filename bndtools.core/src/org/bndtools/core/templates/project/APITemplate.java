@@ -2,10 +2,14 @@ package org.bndtools.core.templates.project;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.bndtools.api.BndProjectResource;
 import org.bndtools.api.IBndProject;
 import org.bndtools.api.IProjectTemplate;
+import org.bndtools.api.ProjectPaths;
 
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.ExportedPackage;
@@ -14,14 +18,14 @@ import aQute.bnd.header.Attrs;
 
 public class APITemplate implements IProjectTemplate {
 
-    public void modifyInitialBndModel(BndEditModel model) {
-        // Export-Package: org.example.api
+    @Override
+    public void modifyInitialBndModel(BndEditModel model, String projectName, ProjectPaths projectPaths) {
         model.setExportedPackages(Arrays.asList(new ExportedPackage[] {
-            new ExportedPackage("org.example.api", new Attrs())
+            new ExportedPackage(projectName, new Attrs())
         }));
 
         // Bundle-Version: 1.0.0
-        model.setBundleVersion("1.0.0");
+        model.setBundleVersion("1.0.0.${tstamp}");
 
         // -buildpath
         List<VersionedClause> buildPath = new ArrayList<VersionedClause>();
@@ -33,14 +37,21 @@ public class APITemplate implements IProjectTemplate {
         model.setBuildPath(buildPath);
     }
 
-    public void modifyInitialBndProject(IBndProject project) {
-        project.addResource("src/org/example/api/ExampleProviderInterface.java", APITemplate.class.getResource("ExampleProviderInterface.java.txt"));
-        project.addResource("src/org/example/api/ExampleConsumerInterface.java", APITemplate.class.getResource("ExampleConsumerInterface.java.txt"));
-        project.addResource("src/org/example/api/packageinfo", APITemplate.class.getResource("packageinfo-template.txt"));
+    @Override
+    public void modifyInitialBndProject(IBndProject project, String projectName, ProjectPaths projectPaths) {
+        String src = projectPaths.getSrc();
+        String pkgPath = projectName.replaceAll("\\.", "/");
+
+        Map<String,String> replaceRegularExpressions = new LinkedHashMap<String,String>();
+        replaceRegularExpressions.put("@package@", projectName);
+
+        project.addResource(src + "/" + pkgPath + "/ExampleProviderInterface.java", new BndProjectResource(APITemplate.class.getResource("ExampleProviderInterface.java.txt"), replaceRegularExpressions));
+        project.addResource(src + "/" + pkgPath + "/ExampleConsumerInterface.java", new BndProjectResource(APITemplate.class.getResource("ExampleConsumerInterface.java.txt"), replaceRegularExpressions));
+        project.addResource(src + "/" + pkgPath + "/packageinfo", new BndProjectResource(APITemplate.class.getResource("packageinfo-template.txt"), null));
     }
 
+    @Override
     public boolean enableTestSourceFolder() {
-        return false;
+        return true;
     }
-
 }

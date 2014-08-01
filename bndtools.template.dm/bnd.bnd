@@ -2,15 +2,15 @@
 
 -buildpath:\
 	ee.j2se;version=${javac.ee},\
+	osgi.core;version=${osgi.core.version},\
 	bndtools.core;version=snapshot,\
 	bndtools.api;version=snapshot,\
 	bndtools.repository.base;version=snapshot,\
-	osgi.core,\
 	${bndlib}
 
 Bundle-SymbolicName: bndtools.template.dm;singleton:=true
 Bundle-Vendor: Bndtools
-Bundle-Version: ${master-version}
+Bundle-Version: 2.3.1.${tstamp}
 
 Include-Resource:\
 	plugin.xml=_plugin.xml,\
@@ -18,5 +18,3 @@ Include-Resource:\
 
 Private-Package: bndtools.templates.dm,\
 	bndtools.templates.dm.annotations
-
--removeheaders: Private-Package

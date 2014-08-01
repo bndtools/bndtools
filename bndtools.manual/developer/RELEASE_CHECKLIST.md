@@ -1,6 +1,7 @@
 # Release Cycle
 
 The following release cycle is used:
+
 ```
 ----> DEV ---> RCx ---> REL --+
  ^ ^       ^        |         |
@@ -28,41 +29,58 @@ The versions to use:
 You must:
 * Be a bndtools committer
 * Have checked out the source code in a directory of your choice
-* Not be afraid to use the commandline
-* Be able to run a bash script from the commandline
-* Have `git` installed in such a fashion that the `git` executable is in the search path.
+* Not be afraid to use the command-line
+* Have `Git` installed in such a fashion that the `git` executable is in the search path.
 
 # Release Procedure for Bndtools
 
-The procuedure described here is going to release version `a.b.c.REL` from the `master` branch in a local checkout of the source code. You can ofcourse release from a different branch, this is just an example.
+The procedure described here is going to release version `a.b.c.REL` from the `master` branch in a local checkout of the source code. You can obviously release from a different branch, this is just an example.
 
-We assume that changes to the source code will be pushed to the git remote repository with the `github` alias.
+We assume that changes to the source code will be pushed to the Git remote repository with the `github` alias.
 
 
 * Make sure that the `Changes-in-a-b-c` page is added to / present on the [changelogs page](https://github.com/bndtools/bndtools/wiki/Changelogs). If it is not present, then edit the page, add the snippet below, and save the page.
+
 ```
 [Changes in a.b.c](https://github.com/bndtools/bndtools/wiki/Changes-in-a.b.c)
 ```
+
 * Click on the `Changes in a.b.c` page link to go to it. Usually the `Changes-in-a-b-c` page will be build up during development as the `Changes-on-master` page. If that page is present, then copy its contents into the `Changes-in-a-b-c` page and adjust it. Otherwise, just make sure it is up-to-date.
 * Open a bash shell and enter the directory in which you have checked out the source code.
 * Clean the source code checkout (this will destroy any changes)
+
 ```
 git clean -fdx
 git reset --hard
 ```
+
 * Switch to the `master` branch
+
 ```
 git checkout master
 ```
-* Update the versions in the source code. From the root of the checkout, run the script
+
+* Update the master version in the source code. Adjust the version settings in the file ```cnf/build.bnd```:
+
 ```
-./cnf/scripts/setVersion.bash a.b.c.REL
+base-version:             a.b.c
+base-version-qualifier:   REL
 ```
-* Create a git tag and push it (and the `master` branch as well)
+
+* Check in the changes into Git
+
 ```
-git tag -a a.b.c.REL
+git add cnf/build.bnd
+git commit -s -m "Update version to a.b.c.REL"
+```
+
+* Create a Git tag and push it (and the `master` branch as well)
+
+```
+git tag -a -m "Tag a.b.c.REL" a.b.c.REL
 git push github master a.b.c.REL
 ```
+
 * Let Jenkins on [Cloudbees](https://bndtools.ci.cloudbees.com/) build the release, wait for the build to finish and be successful.
 * Lock the Cloudbees build so that it is kept forever, and set the build information to `Bndtools a.b.c.REL`
 * Download a ZIP file with the relevant archived artifacts from https://bndtools.ci.cloudbees.com/job/bndtools.master/lastSuccessfulBuild/artifact/build/generated/*zip*/generated.zip
@@ -72,11 +90,17 @@ git push github master a.b.c.REL
   * generated/bndtools-extras-latest.zip
   * generated/bndtools-latest.zip
 * Push the changes in the `release` repository.
-* Update the versions for the next development build, run the script
+* Update the versions for the next development build, adjust the version settings in the file ```cnf/build.bnd```:
+
 ```
-./cnf/scripts/setVersion.bash a.d.0.DEV
+base-version:             a.d.0
+base-version-qualifier:   DEV
 ```
-* Push the version change.
+
+* Commit and push the version change.
+
 ```
+git add cnf/build.bnd
+git commit -s -m "Update version to a.d.0.DEV"
 git push github master
 ```

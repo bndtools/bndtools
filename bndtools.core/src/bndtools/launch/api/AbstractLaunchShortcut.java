@@ -102,6 +102,7 @@ public abstract class AbstractLaunchShortcut implements ILaunchShortcut2 {
         }
     }
 
+    @SuppressWarnings("unused")
     protected void launchJavaElement(IJavaElement element, String mode) throws CoreException {
         launch(element.getJavaProject().getProject().getFullPath(), mode);
     }
@@ -152,7 +153,7 @@ public abstract class AbstractLaunchShortcut implements ILaunchShortcut2 {
         ILaunchConfigurationType configType = manager.getLaunchConfigurationType(launchId);
 
         ILaunchConfigurationWorkingCopy wc;
-        wc = configType.newInstance(null, manager.generateUniqueLaunchConfigurationNameFrom(targetPath.lastSegment()));
+        wc = configType.newInstance(null, manager.generateLaunchConfigurationName(targetPath.lastSegment()));
         wc.setAttribute(LaunchConstants.ATTR_LAUNCH_TARGET, targetPath.toString());
         wc.setAttribute(LaunchConstants.ATTR_CLEAN, LaunchConstants.DEFAULT_CLEAN);
         wc.setAttribute(LaunchConstants.ATTR_DYNAMIC_BUNDLES, LaunchConstants.DEFAULT_DYNAMIC_BUNDLES);

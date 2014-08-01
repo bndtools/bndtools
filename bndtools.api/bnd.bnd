@@ -1,10 +1,10 @@
 -buildpath: \
 	ee.j2se;version=${javac.ee},\
-	osgi.core; version=4.1, \
+	osgi.core;version=${osgi.core.version}, \
 	${bndlib}, \
 	org.eclipse.equinox.common, \
 	org.eclipse.core.runtime
 
 Export-Package: org.bndtools.api
 Import-Package: *;ui.workbench=!;common=!;registry=!;texteditor=!;text=!
-Bundle-Version: 1.0.0
+Bundle-Version: 2.0.0.${tstamp}

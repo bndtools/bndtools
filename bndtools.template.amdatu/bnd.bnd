@@ -2,22 +2,20 @@
 
 -buildpath:\
 	ee.j2se;version=${javac.ee},\
+	osgi.core;version=${osgi.core.version},\
 	bndtools.core;version=snapshot,\
 	bndtools.api;version=snapshot,\
 	bndtools.repository.base;version=snapshot,\
-	osgi.core,\
 	${bndlib}
 
 Bundle-SymbolicName: bndtools.template.amdatu;singleton:=true
 Bundle-Vendor: Bndtools
-Bundle-Version: ${master-version}
+Bundle-Version: 2.3.1.${tstamp}
 
 Include-Resource:\
 	plugin.xml=_plugin.xml,\
-	templateDocs/=templateDocs,\
+	templateDocs/=templateDocs
 
 Private-Package: bndtools.templates.amdatu.rest,\
 	bndtools.templates.amdatu.mongo,\
 	bndtools.templates.amdatu.mixed
-
--removeheaders: Private-Package

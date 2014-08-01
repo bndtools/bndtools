@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.bndtools.api.BndtoolsConstants;
@@ -25,8 +27,9 @@ import org.bndtools.build.api.BuildErrorDetailsHandlers;
 import org.bndtools.build.api.DefaultBuildErrorDetailsHandler;
 import org.bndtools.build.api.MarkerData;
 import org.bndtools.builder.classpath.BndContainerInitializer;
-import org.bndtools.builder.decorator.ExportedPackageDecoratorJob;
 import org.bndtools.utils.Predicate;
+import org.bndtools.utils.swt.SWTConcurrencyUtil;
+import org.bndtools.utils.workspace.FileUtils;
 import org.bndtools.utils.workspace.WorkspaceUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -54,12 +57,18 @@ import org.eclipse.jdt.core.IJavaModelMarker;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
+import org.osgi.framework.Version;
 
 import aQute.bnd.build.Project;
 import aQute.bnd.build.Workspace;
+import aQute.bnd.header.Attrs;
 import aQute.bnd.osgi.Builder;
+import aQute.bnd.osgi.Descriptors.PackageRef;
 import aQute.bnd.service.RepositoryListenerPlugin;
+import aQute.lib.collections.SortedList;
 import aQute.lib.io.IO;
 import aQute.service.reporter.Report.Location;
 import bndtools.central.Central;
@@ -69,8 +78,8 @@ import bndtools.preferences.EclipseClasspathPreference;
 
 public class NewBuilder extends IncrementalProjectBuilder {
 
-	public static final String PLUGIN_ID = "bndtools.builder"; 
-	public static final String BUILDER_ID = BndtoolsConstants.BUILDER_ID;
+    public static final String PLUGIN_ID = "bndtools.builder";
+    public static final String BUILDER_ID = BndtoolsConstants.BUILDER_ID;
 
     private static final ILogger logger = Logger.getLogger(NewBuilder.class);
 
@@ -89,6 +98,8 @@ public class NewBuilder extends IncrementalProjectBuilder {
     private int logLevel = LOG_NONE;
     private ScopedPreferenceStore projectPrefs;
 
+    private int nrFilesBuilt = 0;
+
     @Override
     protected IProject[] build(int kind, @SuppressWarnings("rawtypes") Map args, IProgressMonitor monitor) throws CoreException {
         BndPreferences prefs = new BndPreferences();
@@ -100,12 +111,16 @@ public class NewBuilder extends IncrementalProjectBuilder {
         validationResults = new MultiStatus(PLUGIN_ID, 0, "Validation errors in bnd project", null);
         buildLog = new ArrayList<String>(5);
 
+        nrFilesBuilt = 0;
+
         try {
             // Prepare build listeners and build error handlers
             listeners = new BuildListeners();
 
             // Get the initial project
             IProject myProject = getProject();
+            reportDelta(myProject);
+
             listeners.fireBuildStarting(myProject);
             Project model = null;
             try {
@@ -190,7 +205,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
             listeners.release();
             if (!buildLog.isEmpty() && logLevel > 0) {
                 StringBuilder builder = new StringBuilder();
-                builder.append(String.format("BUILD LOG for project %s (%d entries):", getProject(), buildLog.size()));
+                builder.append(String.format("BUILD LOG %2s %s", (nrFilesBuilt > 0 ? nrFilesBuilt : ""), getProject()));
                 for (String message : buildLog) {
                     builder.append("\n -> ").append(message);
                 }
@@ -200,6 +215,27 @@ public class NewBuilder extends IncrementalProjectBuilder {
             model = null;
             subBuilders = null;
         }
+    }
+
+    /*
+     * Report the full delta in the log
+     */
+    private void reportDelta(IProject project) throws CoreException {
+        IResourceDelta delta = getDelta(project);
+        if (delta == null) {
+            log(LOG_FULL, "No delta, is null");
+            return;
+        }
+
+        delta.accept(new IResourceDeltaVisitor() {
+
+            @Override
+            public boolean visit(IResourceDelta delta) throws CoreException {
+                log(LOG_FULL, delta.toString() + " " + delta.getResource().getModificationStamp() + " " + delta.getKind());
+                return true;
+            }
+        });
+
     }
 
     @Override
@@ -242,6 +278,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
         final AtomicBoolean result = new AtomicBoolean(false);
         cnfDelta.accept(new IResourceDeltaVisitor() {
+            @Override
             public boolean visit(IResourceDelta delta) throws CoreException {
                 if (!isChangeDelta(delta))
                     return false;
@@ -294,6 +331,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
         final AtomicBoolean result = new AtomicBoolean(false);
         myDelta.accept(new IResourceDeltaVisitor() {
+            @Override
             public boolean visit(IResourceDelta delta) throws CoreException {
                 if (!isChangeDelta(delta))
                     return false;
@@ -313,6 +351,21 @@ public class NewBuilder extends IncrementalProjectBuilder {
                     return false;
                 }
 
+                if (resource.getType() == IResource.FILE) {
+                    // Check files included by the -include directive in bnd.bnd
+                    List<File> includedFiles = model.getIncluded();
+                    if (includedFiles == null) {
+                        return false;
+                    }
+                    for (File includedFile : includedFiles) {
+                        IPath location = resource.getLocation();
+                        if (location != null && includedFile.equals(location.toFile())) {
+                            result.set(true);
+                            return false;
+                        }
+                    }
+                }
+
                 return false;
             }
 
@@ -329,7 +382,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
         for (Project dep : dependson) {
             File targetDir = dep.getTarget();
             // Does not exist... was it deleted?
-            if (targetDir != null && !(targetDir.isDirectory()))
+            if (targetDir == null || !(targetDir.isDirectory()))
                 return dep;
 
             IProject project = WorkspaceUtils.findOpenProject(wsroot, dep);
@@ -375,28 +428,55 @@ public class NewBuilder extends IncrementalProjectBuilder {
         boolean force = forceBuild;
         IResourceDelta delta;
 
-        IResourceDeltaVisitor deltaVisitor = new ProjectDeltaVisitor(getProject(), changedFiles);
+        ProjectDeltaVisitor deltaVisitor = new ProjectDeltaVisitor(getProject(), changedFiles);
 
         // Get delta on local project
         delta = getDelta(getProject());
         if (delta != null) {
-            log(LOG_FULL, "%d files in local project (outside target) changed or removed: %s", changedFiles.size(), changedFiles);
             delta.accept(deltaVisitor);
+
+            log(LOG_FULL, "%d files in local project (outside target) changed or removed: %s, forced=%s", changedFiles.size(), changedFiles, deltaVisitor.force);
+
+            if (deltaVisitor.force || changedFiles.size() > 0) {
+                log(LOG_FULL, "Project changed: files=%s, force = %s", changedFiles, deltaVisitor.force);
+                force = true;
+            }
         } else {
-            log(LOG_BASIC, "no info on local changes available");
+            log(LOG_BASIC, "no info on local changes, doing a full build");
+            force = true;
         }
 
-        // Get deltas on dependency projects
-        for (IProject depProject : dependsOn) {
-            delta = getDelta(depProject);
-            if (delta != null) {
-                IResourceDeltaVisitor depVisitor = new ProjectDeltaVisitor(depProject, changedFiles);
-                delta.accept(depVisitor);
-                log(LOG_FULL, "%d files in dependency project '%s' changed or removed: %s", changedFiles.size(), depProject.getName(), changedFiles);
-            } else {
-                log(LOG_BASIC, "no info available on changes from project '%s'", depProject.getName());
+        if (!force) {
+            // Get deltas on dependency projects
+            for (IProject depProject : dependsOn) {
+                delta = getDelta(depProject);
+                if (delta != null) {
+                    Set<File> changedByProject = new HashSet<File>();
+                    ProjectDeltaVisitor depVisitor = new ProjectDeltaVisitor(depProject, changedByProject);
+                    delta.accept(depVisitor);
+
+                    changedFiles.addAll(changedByProject);
+
+                    //
+                    // If the visitor detected a project that we depend on
+                    // and that has a change in its output folder then we
+                    // must rebuild. no use checking any further
+                    //
+
+                    if (depVisitor.force) {
+                        log(LOG_FULL, "Project %s, which we depend on has changed its output, forcing rebuild, files changed are %s", depProject, changedByProject);
+                        force = true;
+                        break;
+                    }
+
+                    log(LOG_FULL, "%d files in dependency project '%s' changed or removed: %s", changedFiles.size(), depProject.getName(), changedByProject);
+
+                } else {
+                    log(LOG_BASIC, "no info available on changes from project '%s'", depProject.getName());
+                }
             }
-        }
+        } else
+            log(LOG_FULL, "Ignoring project dependencies because we already decided to build");
 
         // Process the sub-builders to determine whether a rebuild, force
         // rebuild, or nothing is required.
@@ -441,6 +521,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
         }
 
         // Remove files not in scope
+
         if (!force && !changedFiles.isEmpty() && !model.isNoBundles()) {
             for (Iterator<File> itr = changedFiles.iterator(); itr.hasNext();) {
                 File changeFile = itr.next();
@@ -471,6 +552,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
     private Set<File> findJarsInTarget() throws Exception {
         File targetDir = model.getTarget();
         File[] targetJars = targetDir.listFiles(new FileFilter() {
+            @Override
             public boolean accept(File pathname) {
                 return pathname.getName().toLowerCase().endsWith(".jar");
             }
@@ -509,6 +591,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
             ScopedPreferenceStore store = new ScopedPreferenceStore(new ProjectScope(getProject()), BndtoolsConstants.CORE_PLUGIN_ID);
             switch (CompileErrorAction.parse(store.getString(CompileErrorAction.PREFERENCE_KEY))) {
             case skip :
+            default :
                 addBuildMarkers(String.format("Will not build OSGi bundle(s) for project %s until compilation problems are fixed.", model.getName()), IMarker.SEVERITY_ERROR);
                 log(LOG_BASIC, "SKIPPING due to Java problem markers");
                 return false;
@@ -523,6 +606,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
             ScopedPreferenceStore store = new ScopedPreferenceStore(new ProjectScope(getProject()), BndtoolsConstants.CORE_PLUGIN_ID);
             switch (CompileErrorAction.parse(store.getString(CompileErrorAction.PREFERENCE_KEY))) {
             case skip :
+            default :
                 addBuildMarkers(String.format("Will not build OSGi bundle(s) for project %s until classpath resolution problems are fixed.", model.getName()), IMarker.SEVERITY_ERROR);
                 log(LOG_BASIC, "SKIPPING due to classpath resolution problem markers");
                 return false;
@@ -548,9 +632,6 @@ public class NewBuilder extends IncrementalProjectBuilder {
             }
         }
 
-        // Update the exported packages for the project
-        ExportedPackageDecoratorJob.scheduleForProject(getProject());
-
         // Load Eclipse classpath containers
         model.clearClasspath();
         EclipseClasspathPreference classpathPref = EclipseClasspathPreference.parse(projectPrefs.getString(EclipseClasspathPreference.PREFERENCE_KEY));
@@ -570,9 +651,14 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
             if (force || stale) {
                 log(LOG_BASIC, "REBUILDING: force=%b; stale=%b", force, stale);
+                long now = System.currentTimeMillis();
                 built = model.buildLocal(false);
                 if (built == null)
                     built = new File[0]; // shouldn't happen but just in case
+
+                nrFilesBuilt += built.length;
+                log(LOG_BASIC, "Build took %s secs", (System.currentTimeMillis() - now) / 1000);
+                decorate();
             } else {
                 log(LOG_BASIC, "NOT REBUILDING: force=%b;stale=%b", force, stale);
                 built = new File[0];
@@ -771,13 +857,24 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
         if (!validationResults.isOK()) {
             for (IStatus status : validationResults.getChildren()) {
-                addClasspathMarker(status);
+                addBuildMarkers(status);
             }
         }
     }
 
     private void clearBuildMarkers() throws CoreException {
         getProject().deleteMarkers(BndtoolsConstants.MARKER_BND_PROBLEM, true, IResource.DEPTH_INFINITE);
+    }
+
+    private void addBuildMarkers(IStatus status) throws Exception {
+        if (status.isMultiStatus()) {
+            for (IStatus child : status.getChildren()) {
+                addBuildMarkers(child);
+            }
+            return;
+        }
+
+        addBuildMarkers(status.getMessage(), iStatusSeverityToIMarkerSeverity(status));
     }
 
     private void addBuildMarkers(String message, int severity) throws Exception {
@@ -788,12 +885,34 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
             List<MarkerData> markers = handler.generateMarkerData(getProject(), model, location);
             for (MarkerData markerData : markers) {
-                IMarker marker = markerData.getResource().createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
-                marker.setAttribute(IMarker.SEVERITY, severity);
-                marker.setAttribute("$bndType", type);
-                marker.setAttribute(BuildErrorDetailsHandler.PROP_HAS_RESOLUTIONS, markerData.hasResolutions());
-                for (Entry<String,Object> attrib : markerData.getAttribs().entrySet())
-                    marker.setAttribute(attrib.getKey(), attrib.getValue());
+                IResource resource = markerData.getResource();
+                //
+                // TODO pkr: Just fixed an NPE java.lang.NullPointerException
+                //                at org.bndtools.builder.NewBuilder.addBuildMarkers(NewBuilder.java:822)
+                //                at org.bndtools.builder.NewBuilder.createBuildMarkers(NewBuilder.java:783)
+                //                at org.bndtools.builder.NewBuilder.rebuild(NewBuilder.java:637)
+                //                at org.bndtools.builder.NewBuilder.rebuildIfLocalChanges(NewBuilder.java:481)
+                //                at org.bndtools.builder.NewBuilder.build(NewBuilder.java:184)
+                //                at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:734)
+                //                at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:42)
+                //                at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:206)
+                //                at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:246)
+                //                at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:299)
+                //                at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:42)
+                //                at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:302)
+                //                at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:358)
+                //                at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:381)
+                //                at org.eclipse.core.internal.events.AutoBuildJob.doBuild(AutoBuildJob.java:143)
+                //                at org.eclipse.core.internal.events.AutoBuildJob.run(AutoBuildJob.java:241)
+                //                at org.eclipse.core.internal.jobs.Worker.run(Worker.java:54)
+                if (resource != null) {
+                    IMarker marker = resource.createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
+                    marker.setAttribute(IMarker.SEVERITY, severity);
+                    marker.setAttribute("$bndType", type);
+                    marker.setAttribute(BuildErrorDetailsHandler.PROP_HAS_RESOLUTIONS, markerData.hasResolutions());
+                    for (Entry<String,Object> attrib : markerData.getAttribs().entrySet())
+                        marker.setAttribute(attrib.getKey(), attrib.getValue());
+                }
             }
         } else {
             IMarker marker = DefaultBuildErrorDetailsHandler.getDefaultResource(getProject()).createMarker(BndtoolsConstants.MARKER_BND_PROBLEM);
@@ -810,7 +929,7 @@ public class NewBuilder extends IncrementalProjectBuilder {
         marker.setAttribute(IMarker.MESSAGE, message);
     }
 
-    private void addClasspathMarker(IStatus status) throws CoreException {
+    private int iStatusSeverityToIMarkerSeverity(IStatus status) {
         int severity;
         switch (status.getSeverity()) {
         case IStatus.CANCEL :
@@ -823,8 +942,20 @@ public class NewBuilder extends IncrementalProjectBuilder {
         default :
             severity = IMarker.SEVERITY_INFO;
         }
-        addClasspathMarker(status.getMessage(), severity);
+
+        return severity;
     }
+
+    //    private void addClasspathMarker(IStatus status) throws CoreException {
+    //        if (status.isMultiStatus()) {
+    //            for (IStatus child : status.getChildren()) {
+    //                addClasspathMarker(child);
+    //            }
+    //            return;
+    //        }
+    //
+    //        addClasspathMarker(status.getMessage(), iStatusSeverityToIMarkerSeverity(status));
+    //    }
 
     private void log(int level, String message, Object... args) {
         if (logLevel >= level)
@@ -836,17 +967,24 @@ public class NewBuilder extends IncrementalProjectBuilder {
         final Project model;
         final Set<File> changedFiles;
         final IPath targetDirFullPath;
+        final IPath bin;
+
+        boolean force = false;
 
         ProjectDeltaVisitor(final IProject project, final Set<File> changedFiles) throws Exception {
             this.changedFiles = changedFiles;
             this.model = Central.getProject(project.getLocation().toFile());
             if (this.model == null) {
                 this.targetDirFullPath = null;
+                this.bin = null;
                 return;
             }
+
             this.targetDirFullPath = project.getFullPath().append(calculateTargetDirPath(model));
+            this.bin = targetDirFullPath.removeLastSegments(1).append(model.getOutput().getName());
         }
 
+        @Override
         public boolean visit(IResourceDelta delta) throws CoreException {
             if (targetDirFullPath == null) {
                 return false;
@@ -860,6 +998,19 @@ public class NewBuilder extends IncrementalProjectBuilder {
 
             if (resource.getType() == IResource.FOLDER) {
                 IPath folderPath = resource.getFullPath();
+
+                // #860
+
+                if (folderPath.equals(bin)) {
+                    //
+                    // Any changes in bin should result in a rebuild of any dependent
+                    // project.
+                    // TODO We could of course optimize to see if this represents
+                    // an exported package?
+                    //
+                    force = true;
+                    return false;
+                }
                 // ignore ALL files in target dir
                 return !folderPath.equals(targetDirFullPath);
             }
@@ -872,4 +1023,62 @@ public class NewBuilder extends IncrementalProjectBuilder {
             return false;
         }
     }
+
+    /*
+     * We can now decorate based on the build we just did.
+     */
+    private void decorate() throws Exception {
+
+        //
+        // Calculate the source path resources
+        //
+
+        File projectBaseFile = getProject().getLocation().toFile().getAbsoluteFile();
+        Collection<File> modelSourcePaths = model.getSourcePath();
+        Collection<IResource> modelSourcePathsResources = null;
+        if (modelSourcePaths != null && !modelSourcePaths.isEmpty()) {
+            modelSourcePathsResources = new HashSet<IResource>();
+            for (File modelSourcePath : modelSourcePaths) {
+                if (projectBaseFile.equals(modelSourcePath.getAbsoluteFile())) {
+                    continue;
+                }
+                IResource modelSourcePathResource = FileUtils.toProjectResource(getProject(), modelSourcePath);
+                if (modelSourcePathResource != null) {
+                    modelSourcePathsResources.add(modelSourcePathResource);
+                }
+            }
+        }
+
+        //
+        // Gobble up the information for exports and contained
+        //
+
+        Map<String,SortedSet<Version>> allExports = new HashMap<String,SortedSet<Version>>();
+        Set<String> allContained = new HashSet<String>();
+
+        //
+        // First the exports
+        //
+
+        for (Map.Entry<PackageRef,Attrs> entry : model.getExports().entrySet()) {
+            String v = entry.getValue().getVersion();
+            Version version = v == null ? Version.emptyVersion : new Version(v);
+            allExports.put(entry.getKey().getFQN(), new SortedList<Version>(version));
+        }
+
+        for (Map.Entry<PackageRef,Attrs> entry : model.getContained().entrySet()) {
+            allContained.add(entry.getKey().getFQN());
+        }
+
+        Central.setProjectPackageModel(getProject(), allExports, allContained, modelSourcePathsResources);
+
+        Display display = PlatformUI.getWorkbench().getDisplay();
+        SWTConcurrencyUtil.execForDisplay(display, true, new Runnable() {
+            @Override
+            public void run() {
+                PlatformUI.getWorkbench().getDecoratorManager().update("bndtools.packageDecorator");
+            }
+        });
+    }
+
 }

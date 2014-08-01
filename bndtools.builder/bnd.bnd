@@ -1,34 +1,36 @@
--buildpath: \
-    ee.j2se;version=${javac.ee},\
-    ${bndlib}, \
-    ${aQute-repository}, \
-    osgi.core, \
-    org.eclipse.osgi, \
-    org.eclipse.equinox.common, \
-    org.eclipse.equinox.registry, \
-    org.eclipse.equinox.preferences, \
-    org.eclipse.core.runtime, \
-    org.eclipse.core.resources, \
-    org.eclipse.core.jobs, \
-    org.eclipse.core.commands, \
-    org.eclipse.jface, \
-    org.eclipse.jface.text, \
-    org.eclipse.text, \
-    org.eclipse.ui.ide, \
-    org.eclipse.ui.workbench, \
-    org.eclipse.jdt.core, \
-    org.eclipse.jdt.launching, \
-    org.eclipse.jdt.ui, \
-    org.eclipse.swt.cocoa.macosx.x86_64, \
-    org.eclipse.swt, \
-    bndtools.api; version=latest, \
-    bndtools.utils; version=project, \
-    bndtools.core; version=snapshot
+-buildpath:  \
+	ee.j2se;version=${javac.ee},\
+	osgi.core;version=${osgi.core.version},\
+	osgi.cmpn;version=${osgi.cmpn.version},\
+	${bndlib},\
+	${aQute-repository},\
+	javax.xml,\
+	org.eclipse.osgi,\
+	org.eclipse.equinox.common,\
+	org.eclipse.equinox.registry,\
+	org.eclipse.equinox.preferences,\
+	org.eclipse.core.runtime,\
+	org.eclipse.core.resources,\
+	org.eclipse.core.jobs,\
+	org.eclipse.core.commands,\
+	org.eclipse.jface,\
+	org.eclipse.jface.text,\
+	org.eclipse.text,\
+	org.eclipse.ui.ide,\
+	org.eclipse.ui.workbench,\
+	org.eclipse.jdt.core,\
+	org.eclipse.jdt.launching,\
+	org.eclipse.jdt.ui,\
+	org.eclipse.swt.cocoa.macosx.x86_64,\
+	org.eclipse.swt,\
+	bndtools.api;version=latest,\
+	bndtools.utils;version=project,\
+	bndtools.core;version=snapshot
 
 # Headers
 Bundle-SymbolicName: bndtools.builder; singleton:=true
-Bundle-Version: ${master-version}
-Bundle-Activator: org.bndtools.builder.Plugin
+Bundle-Version: 2.3.1.${tstamp}
+Bundle-Activator: org.bndtools.builder.BuilderPlugin
 Bundle-ActivationPolicy: lazy
 
 # Disable ALL Eclipse split package attributes, to ensure we import from the "aggregator" bundle(s).
@@ -36,7 +38,7 @@ Import-Package: *;ui.workbench=!;common=!;registry=!;texteditor=!;text=!
 
 
 # Content
-repoindex-bundles: \
+repoindex-packages: \
 	org.osgi.service.indexer.impl.types,\
 	org.osgi.service.indexer.impl,\
 	org.osgi.service.indexer.impl.util,\
@@ -45,7 +47,7 @@ repoindex-bundles: \
 	
 Private-Package: \
 	org.bndtools.builder.*, \
-	${repoindex-bundles}
+	${repoindex-packages}
 
 Conditional-Package: \
 	aQute.lib.*;-split-package:=merge-first, \

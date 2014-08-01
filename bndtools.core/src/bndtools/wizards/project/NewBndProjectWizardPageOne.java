@@ -12,6 +12,7 @@ package bndtools.wizards.project;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.Observer;
 
 import org.bndtools.api.BndtoolsConstants;
 import org.bndtools.api.IProjectTemplate;
+import org.bndtools.api.ProjectLayout;
 import org.bndtools.api.ProjectPaths;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IProject;
@@ -44,13 +46,13 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
-
 public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
 
     private IProjectTemplate projectTemplate;
 
     private final ProjectNameGroup nameGroup = new ProjectNameGroup();
     private final ProjectLocationGroup locationGroup = new ProjectLocationGroup("Location");
+    private final ProjectLayoutGroup layoutGroup = new ProjectLayoutGroup("Project Layout");
     @SuppressWarnings("unused")
     private final Validator fValidator;
 
@@ -60,12 +62,14 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
         fValidator = new Validator();
 
         nameGroup.addPropertyChangeListener(new PropertyChangeListener() {
+            @Override
             public void propertyChange(PropertyChangeEvent event) {
                 locationGroup.setProjectName(nameGroup.getProjectName());
             }
         });
 
         locationGroup.addPropertyChangeListener(new PropertyChangeListener() {
+            @Override
             public void propertyChange(PropertyChangeEvent event) {
                 IStatus status = locationGroup.getStatus();
                 setPageComplete(status.isOK());
@@ -85,9 +89,16 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
 
     @Override
     public URI getProjectLocationURI() {
-        if (locationGroup.isLocationInWorkspace())
+        IPath location = locationGroup.getLocation();
+        if (isDirectlyInWorkspace(location))
             return null;
-        return URIUtil.toURI(locationGroup.getLocation());
+
+        return URIUtil.toURI(location);
+    }
+
+    private static boolean isDirectlyInWorkspace(IPath location) {
+        File wslocation = Platform.getLocation().toFile();
+        return location.toFile().getAbsoluteFile().getParentFile().equals(wslocation);
     }
 
     @Override
@@ -111,6 +122,9 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
 
         Control jreControl = createJRESelectionControl(composite);
         jreControl.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+        Control layoutControl = layoutGroup.createControl(composite);
+        layoutControl.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
         Control workingSetControl = createWorkingSetControl(composite);
         workingSetControl.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -139,18 +153,24 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
     public IClasspathEntry[] getSourceClasspathEntries() {
         IPath projectPath = new Path(getProjectName()).makeAbsolute();
 
+        ProjectPaths projectPaths = ProjectPaths.get(layoutGroup.getProjectLayout());
+
         List<IClasspathEntry> newEntries = new ArrayList<IClasspathEntry>(2);
-        newEntries.add(JavaCore.newSourceEntry(projectPath.append(ProjectPaths.PATH_SRC), null, projectPath.append(ProjectPaths.PATH_SRC_BIN)));
+        newEntries.add(JavaCore.newSourceEntry(projectPath.append(projectPaths.getSrc()), null, projectPath.append(projectPaths.getBin())));
 
         if (projectTemplate == null || projectTemplate.enableTestSourceFolder())
-            newEntries.add(JavaCore.newSourceEntry(projectPath.append(ProjectPaths.PATH_TEST_SRC), null, projectPath.append(ProjectPaths.PATH_TEST_BIN)));
+            newEntries.add(JavaCore.newSourceEntry(projectPath.append(projectPaths.getTestSrc()), null, projectPath.append(projectPaths.getTestBin())));
 
         return newEntries.toArray(new IClasspathEntry[newEntries.size()]);
     }
 
     @Override
     public IPath getOutputLocation() {
-        return new Path(getProjectName()).makeAbsolute().append(ProjectPaths.PATH_SRC_BIN);
+        return new Path(getProjectName()).makeAbsolute().append(ProjectPaths.get(layoutGroup.getProjectLayout()).getBin());
+    }
+
+    public ProjectLayout getProjectLayout() {
+        return layoutGroup.getProjectLayout();
     }
 
     public void setProjectTemplate(IProjectTemplate projectTemplate) {
@@ -162,6 +182,7 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
      */
     private final class Validator implements Observer {
 
+        @Override
         public void update(Observable o, Object arg) {
 
             final IWorkspace workspace = JavaPlugin.getWorkspace();

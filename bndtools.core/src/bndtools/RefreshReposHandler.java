@@ -1,6 +1,7 @@
 package bndtools;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
@@ -16,7 +17,10 @@ import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 
+import aQute.bnd.service.Refreshable;
+import aQute.bnd.service.RepositoryPlugin;
 import bndtools.central.Central;
+import bndtools.central.RepositoryUtils;
 
 public class RefreshReposHandler extends AbstractHandler {
 
@@ -36,6 +40,22 @@ public class RefreshReposHandler extends AbstractHandler {
                     try {
                         buildFile.getWorkspace().run(new IWorkspaceRunnable() {
                             public void run(IProgressMonitor monitor) throws CoreException {
+                                List<RepositoryPlugin> repos = RepositoryUtils.listRepositories(true);
+                                for (RepositoryPlugin i : repos) {
+                                    if (i instanceof Refreshable) {
+                                        boolean success = false;
+                                        Exception ex = null;
+                                        try {
+                                            success = ((Refreshable) i).refresh();
+                                        } catch (Exception e) {
+                                            ex = e;
+                                        }
+                                        if (!success) {
+                                            logger.logError("Failed to refresh repository: " + i.getName(), ex);
+                                        }
+                                    }
+                                }
+
                                 buildFile.touch(monitor);
                             }
                         }, monitor);
@@ -50,5 +70,4 @@ public class RefreshReposHandler extends AbstractHandler {
 
         return null;
     }
-
 }

@@ -10,9 +10,10 @@
  *******************************************************************************/
 package bndtools;
 
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,6 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.bndtools.api.ILogger;
 import org.bndtools.api.IStartupParticipant;
 import org.bndtools.api.Logger;
+import org.bndtools.headless.build.manager.api.HeadlessBuildManager;
+import org.bndtools.versioncontrol.ignores.manager.api.VersionControlIgnoresManager;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
@@ -61,10 +64,12 @@ public class Plugin extends AbstractUIPlugin {
     private Activator bndActivator;
     private final List<IStartupParticipant> startupParticipants = new LinkedList<IStartupParticipant>();
 
-    private volatile ServiceTracker workspaceTracker;
-    private volatile ServiceRegistration urlHandlerReg;
+    private volatile ServiceTracker<IWorkspace,IWorkspace> workspaceTracker;
+    private volatile ServiceRegistration<URLStreamHandlerService> urlHandlerReg;
     private volatile IndexerTracker indexerTracker;
     private volatile ResourceIndexerTracker resourceIndexerTracker;
+    private volatile HeadlessBuildManagerTracker headlessBuildManager;
+    private volatile VersionControlIgnoresManagerTracker versionControlIgnoresManager;
 
     private volatile ScheduledExecutorService scheduler;
 
@@ -86,27 +91,33 @@ public class Plugin extends AbstractUIPlugin {
         resourceIndexerTracker = new ResourceIndexerTracker(context, 1000);
         resourceIndexerTracker.open();
 
+        versionControlIgnoresManager = new VersionControlIgnoresManagerTracker(context);
+        versionControlIgnoresManager.open();
+
+        headlessBuildManager = new HeadlessBuildManagerTracker(context);
+        headlessBuildManager.open();
+
         registerWorkspaceServiceFactory(context);
 
         runStartupParticipants();
     }
 
     private static void registerWorkspaceServiceFactory(BundleContext context) {
-        Properties props = new Properties();
+        Dictionary<String,Object> props = new Hashtable<String,Object>();
         props.put("name", "bndtools");
 
         context.registerService(Workspace.class.getName(), new WorkspaceServiceFactory(), props);
     }
 
     private void registerWorkspaceURLHandler(BundleContext context) {
-        workspaceTracker = new ServiceTracker(context, IWorkspace.class.getName(), null);
+        workspaceTracker = new ServiceTracker<IWorkspace,IWorkspace>(context, IWorkspace.class.getName(), null);
         workspaceTracker.open();
 
-        Properties props = new Properties();
+        Dictionary<String,Object> props = new Hashtable<String,Object>();
         props.put(URLConstants.URL_HANDLER_PROTOCOL, new String[] {
             WorkspaceURLStreamHandlerService.PROTOCOL
         });
-        urlHandlerReg = context.registerService(URLStreamHandlerService.class.getName(), new WorkspaceURLStreamHandlerService(workspaceTracker), props);
+        urlHandlerReg = context.registerService(URLStreamHandlerService.class, new WorkspaceURLStreamHandlerService(workspaceTracker), props);
     }
 
     private void runStartupParticipants() {
@@ -149,6 +160,8 @@ public class Plugin extends AbstractUIPlugin {
         stopStartupParticipants();
 
         bndActivator.stop(context);
+        headlessBuildManager.close();
+        versionControlIgnoresManager.close();
         resourceIndexerTracker.close();
         indexerTracker.close();
         this.bundleContext = null;
@@ -272,8 +285,15 @@ public class Plugin extends AbstractUIPlugin {
         return resourceIndexerTracker;
     }
 
+    public HeadlessBuildManager getHeadlessBuildManager() {
+        return headlessBuildManager;
+    }
+
+    public VersionControlIgnoresManager getVersionControlIgnoresManager() {
+        return versionControlIgnoresManager;
+    }
+
     public ScheduledExecutorService getScheduler() {
         return scheduler;
     }
-
 }

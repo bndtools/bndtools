@@ -13,7 +13,7 @@
 <feature
       id="bndtools.main.feature"
       label="Bndtools"
-      version="2.3.0.DEV-qualifier"
+      version="@master-version@"
       provider-name="Bndtools"
       plugin="bndtools.core">
 
@@ -179,6 +179,41 @@ This Agreement is governed by the laws of the State of New York and the intellec
          unpack="false"/>
 
    <plugin
+         id="org.bndtools.headless.build.manager"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.bndtools.headless.build.plugin.ant"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.bndtools.headless.build.plugin.gradle"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.bndtools.versioncontrol.ignores.manager"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.bndtools.versioncontrol.ignores.plugin.git"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
          id="javax.xml"
          download-size="0"
          install-size="0"
@@ -191,14 +226,5 @@ This Agreement is governed by the laws of the State of New York and the intellec
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-
-<!-- disabled for release, it's nowhere near from finished
-	<plugin
-         id="bndtools.gradle.template"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
--->
 
 </feature>

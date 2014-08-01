@@ -1,10 +1,10 @@
 -dependson: bndtools.bndplugins
 
 Bundle-SymbolicName: bndtools.core;singleton:=true
-Bundle-Version: ${master-version}
+Bundle-Version: 3.0.0.${tstamp}
 Bundle-Activator: bndtools.Plugin
 Bundle-ActivationPolicy: lazy
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: ${java.req.ee}
 Bundle-Localization: plugin
 Bundle-Vendor: Bndtools
 
@@ -16,10 +16,9 @@ Import-Package: junit.framework;resolution:=optional,\
 
 # Bundle Content
 
-Private-Package: \
+Private-Package:  \
 	bndtools.*,\
-	org.bndtools.core.*,\
-	org.apache.felix.resolver
+	org.bndtools.core.*
 
 Conditional-Package:\
 	aQute.lib.*;-split-package:=merge-first,\
@@ -40,12 +39,13 @@ Export-Package: \
 	bndtools.launch.api,\
 	bndtools.wizards.workspace
 
-Include-Resource: plugin.xml=_plugin.xml,\
-	resources
-	
+Include-Resource: {plugin.xml=_plugin.xml},\
+    /=resources/unprocessed,\
+    {/=resources/processed},\
+    enroute=resources/enroute
+
 # Build and Run
 eclipse.deps: \
-	osgi.core,\
 	org.eclipse.core.runtime,\
 	org.eclipse.jface,\
 	org.eclipse.jface.text,\
@@ -82,11 +82,12 @@ eclipse.deps: \
 	org.eclipse.core.contenttype
 
 -buildpath: \
-	ee.j2se;version='[1.6,1.7)',\
+	ee.j2se;version=${javac.ee},\
+	osgi.core;version=${osgi.core.version},\
+	osgi.cmpn;version=${osgi.cmpn.version},\
 	${bndlib},\
 	${aQute-repository},\
 	${aQute-resolve},\
-	org.apache.felix.resolver;version=1.0,\
 	${eclipse.deps},\
 	javax.xml,\
 	javax.xml.stream,\
@@ -94,5 +95,7 @@ eclipse.deps: \
 	libs/org.osgi.service.obr-1.0.2.jar;version=file,\
 	libs/jcip-annotations.jar;version=file,\
 	bndtools.api;version=latest,\
+	org.bndtools.headless.build.manager;version=latest,\
+	org.bndtools.versioncontrol.ignores.manager;version=latest,\
 	bndtools.utils;version=project,\
 	bndtools.repository.base;version=latest

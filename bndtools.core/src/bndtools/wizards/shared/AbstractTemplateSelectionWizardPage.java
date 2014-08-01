@@ -5,10 +5,12 @@ import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
 import org.bndtools.core.ui.ConfigElementLabelProvider;
+import org.bndtools.utils.eclipse.CategorisedConfigurationElementComparator;
 import org.bndtools.utils.eclipse.CategorisedPrioritisedConfigurationElementTreeContentProvider;
 import org.bndtools.utils.osgi.BundleUtils;
 import org.bndtools.utils.workspace.FileUtils;
@@ -58,6 +60,7 @@ public abstract class AbstractTemplateSelectionWizardPage extends WizardPage {
         super(pageName);
     }
 
+    @Override
     public void createControl(Composite parent) {
         Composite container = new Composite(parent, SWT.NULL);
 
@@ -103,6 +106,7 @@ public abstract class AbstractTemplateSelectionWizardPage extends WizardPage {
         loadData();
 
         viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
                 Object selected = ((IStructuredSelection) viewer.getSelection()).getFirstElement();
                 if (selected instanceof IConfigurationElement)
@@ -145,6 +149,8 @@ public abstract class AbstractTemplateSelectionWizardPage extends WizardPage {
 
     private void loadData() {
         elements = loadConfigurationElements();
+        Arrays.sort(elements, new CategorisedConfigurationElementComparator(true));
+
         viewer.setInput(elements);
         viewer.expandAll();
     }
@@ -161,18 +167,22 @@ public abstract class AbstractTemplateSelectionWizardPage extends WizardPage {
         String browserText = "";
         if (element != null) {
             browserText = "<form>No description available.</form>";
+            String name = element.getAttribute("name");
             String htmlAttr = element.getAttribute("doc");
             if (htmlAttr != null) {
                 String bsn = element.getContributor().getName();
                 Bundle bundle = BundleUtils.findBundle(Plugin.getDefault().getBundleContext(), bsn, null);
                 if (bundle != null) {
                     URL htmlUrl = bundle.getResource(htmlAttr);
-                    try {
-                        byte[] bytes = FileUtils.readFully(htmlUrl.openStream());
-                        browserText = new String(bytes, "UTF-8");
-                    } catch (IOException e) {
-                        logger.logError("Error reading template description document.", e);
-                    }
+                    if (htmlUrl == null)
+                        browserText = String.format("<form>No description for %s.</form>", name);
+                    else
+                        try {
+                            byte[] bytes = FileUtils.readFully(htmlUrl.openStream());
+                            browserText = new String(bytes, "UTF-8");
+                        } catch (IOException e) {
+                            logger.logError("Error reading template description document.", e);
+                        }
                 }
             }
         }

@@ -14,7 +14,7 @@ import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 
 import org.bndtools.builder.NewBuilder;
-import org.bndtools.builder.Plugin;
+import org.bndtools.builder.BuilderPlugin;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
@@ -50,17 +50,19 @@ public class BndContainerSourceManager {
     public static void saveAttachedSources(final IJavaProject project, final List<IClasspathEntry> classpathEntries) throws CoreException {
         final Properties props = new Properties();
 
-        // Construct the Properties that represent the source attachment(s)
-        for (final IClasspathEntry entry : classpathEntries) {
-            if (IClasspathEntry.CPE_LIBRARY != entry.getEntryKind()) {
-                continue;
-            }
-            final String path = entry.getPath().toPortableString();
-            if (entry.getSourceAttachmentPath() != null) {
-                props.put(path + PROPERTY_SRC_PATH, entry.getSourceAttachmentPath().toPortableString());
-            }
-            if (entry.getSourceAttachmentRootPath() != null) {
-                props.put(path + PROPERTY_SRC_ROOT, entry.getSourceAttachmentRootPath().toPortableString());
+        if (classpathEntries != null) {
+            // Construct the Properties that represent the source attachment(s)
+            for (final IClasspathEntry entry : classpathEntries) {
+                if (IClasspathEntry.CPE_LIBRARY != entry.getEntryKind()) {
+                    continue;
+                }
+                final String path = entry.getPath().toPortableString();
+                if (entry.getSourceAttachmentPath() != null) {
+                    props.put(path + PROPERTY_SRC_PATH, entry.getSourceAttachmentPath().toPortableString());
+                }
+                if (entry.getSourceAttachmentRootPath() != null) {
+                    props.put(path + PROPERTY_SRC_ROOT, entry.getSourceAttachmentRootPath().toPortableString());
+                }
             }
         }
 
@@ -202,7 +204,7 @@ public class BndContainerSourceManager {
     }
 
 	private static File getSourceAttachmentPropertiesFile(final IProject project) {
-		return new File(Plugin.getInstance().getStateLocation().toFile(), project.getName() + ".sources"); //$NON-NLS-1$
+		return new File(BuilderPlugin.getInstance().getStateLocation().toFile(), project.getName() + ".sources"); //$NON-NLS-1$
 	}
 
 }

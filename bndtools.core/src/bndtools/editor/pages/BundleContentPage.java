@@ -15,7 +15,6 @@ import org.bndtools.core.ui.IFormPageFactory;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -37,36 +36,28 @@ import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.ExportedPackage;
 import aQute.bnd.build.model.clauses.ImportPattern;
 import bndtools.editor.common.MDSashForm;
-import bndtools.editor.common.SaneDetailsPart;
 import bndtools.editor.contents.BundleCalculatedImportsPart;
 import bndtools.editor.contents.GeneralInfoPart;
 import bndtools.editor.contents.PrivatePackagesPart;
-import bndtools.editor.exports.ExportPackagesDetailsPage;
 import bndtools.editor.exports.ExportPatternsListPart;
-import bndtools.editor.imports.ImportPatternsDetailsPage;
 import bndtools.editor.imports.ImportPatternsListPart;
-import bndtools.editor.pkgpatterns.PkgPatternsDetailsPage;
 import bndtools.utils.MessageHyperlinkAdapter;
 
 public class BundleContentPage extends FormPage {
 
     private final BndEditModel model;
 
-    private Color greyTitleBarColour;
-
     private PrivatePackagesPart privPkgsPart;
     private ImportPatternsListPart importPatternListPart;
     private ExportPatternsListPart exportPatternListPart;
 
-    private PkgPatternsDetailsPage<ExportedPackage> exportDetailsPage;
-
-    private ImportPatternsDetailsPage importDetailsPage;
-
     public static final IFormPageFactory FACTORY = new IFormPageFactory() {
+        @Override
         public IFormPage createPage(ExtendedFormEditor editor, BndEditModel model, String id) throws IllegalArgumentException {
             return new BundleContentPage(editor, model, id, "Contents");
         }
 
+        @Override
         public boolean supportsMode(Mode mode) {
             return mode == Mode.bundle;
         }
@@ -90,8 +81,6 @@ public class BundleContentPage extends FormPage {
         form.addMessageHyperlinkListener(new MessageHyperlinkAdapter(getEditor()));
         Composite body = form.getBody();
 
-        greyTitleBarColour = new Color(body.getDisplay(), 210, 245, 210);
-
         // Create controls
         MDSashForm sashForm = new MDSashForm(body, SWT.HORIZONTAL, managedForm);
         sashForm.setSashWidth(6);
@@ -100,16 +89,11 @@ public class BundleContentPage extends FormPage {
         Composite leftPanel = toolkit.createComposite(sashForm);
         createLeftPanel(managedForm, leftPanel);
 
-        Composite middlePanel = toolkit.createComposite(sashForm);
-        createMiddlePanel(managedForm, middlePanel);
-
         Composite rightPanel = toolkit.createComposite(sashForm);
         createRightPanel(managedForm, rightPanel);
 
-        registerDetailsPages();
-
         sashForm.setWeights(new int[] {
-                4, 3, 4
+                1, 1
         });
         sashForm.hookResizeListener();
 
@@ -146,41 +130,17 @@ public class BundleContentPage extends FormPage {
         exportPatternListPart.getSection().setLayoutData(gd);
     }
 
-    void createMiddlePanel(IManagedForm mform, Composite parent) {
-        FormToolkit toolkit = mform.getToolkit();
-
-        SaneDetailsPart detailsPart = new SaneDetailsPart();
-        mform.addPart(detailsPart);
-
-        exportDetailsPage = new ExportPackagesDetailsPage();
-        detailsPart.registerPage(ExportedPackage.class, exportDetailsPage);
-
-        importDetailsPage = new ImportPatternsDetailsPage();
-        detailsPart.registerPage(ImportPattern.class, importDetailsPage);
-
-        NoSelectionPage noSelectionPage = new NoSelectionPage();
-        mform.addPart(noSelectionPage);
-        detailsPart.registerDeselectedPage(noSelectionPage);
-        detailsPart.createContents(toolkit, parent);
-    }
-
-    void registerDetailsPages() {
-        exportDetailsPage.setListPart(exportPatternListPart);
-        importDetailsPage.setListPart(importPatternListPart);
-    }
-
     class NoSelectionPage extends AbstractFormPart implements IDetailsPage {
+        @Override
         public void selectionChanged(IFormPart part, ISelection selection) {}
 
+        @Override
         public void createContents(Composite parent) {
             FormToolkit toolkit = getManagedForm().getToolkit();
             // toolkit.createLabel(parent, "Nothing is selected");
 
             Section section = toolkit.createSection(parent, Section.TITLE_BAR | Section.EXPANDED);
             section.setText("Selection Details");
-
-            section.setTitleBarBackground(greyTitleBarColour);
-            // section.setTitleBarBorderColor(greyTitleBarColour);
 
             Composite composite = toolkit.createComposite(section);
             Label label = toolkit.createLabel(composite, "Select one or more items to view or edit their details.", SWT.WRAP);
@@ -209,8 +169,9 @@ public class BundleContentPage extends FormPage {
         BundleCalculatedImportsPart importsPart = new BundleCalculatedImportsPart(parent, toolkit, Section.TITLE_BAR | Section.EXPANDED);
         mform.addPart(importsPart);
 
-        importPatternListPart = new ImportPatternsListPart(parent, toolkit, Section.TITLE_BAR | Section.EXPANDED);
+        importPatternListPart = new ImportPatternsListPart(parent, toolkit, Section.TITLE_BAR | Section.TWISTIE);
         mform.addPart(importPatternListPart);
+
         GridLayout layout;
         GridData gd;
 
@@ -218,9 +179,11 @@ public class BundleContentPage extends FormPage {
         parent.setLayout(layout);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd.widthHint = 100;
+        gd.heightHint = 200;
         importsPart.getSection().setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd = new GridData(SWT.FILL, SWT.FILL, true, false);
         importPatternListPart.getSection().setLayoutData(gd);
     }
 
@@ -236,10 +199,4 @@ public class BundleContentPage extends FormPage {
         importPatternListPart.getSelectionProvider().setSelection(new StructuredSelection(element));
     }
 
-    @Override
-    public void dispose() {
-        super.dispose();
-        if (greyTitleBarColour != null)
-            greyTitleBarColour.dispose();
-    }
 }

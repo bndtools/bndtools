@@ -77,6 +77,13 @@ public class Messages extends NLS {
     public static String versionUpdateRequired; /* bndtools.release.ProjectListControl::createLegend */
     public static String releaseRequired; /* bndtools.release.ProjectListControl::createLegend */
 
+    public static String checkAll; /* bndtools.release.ProjectListControl::createFilter */
+    public static String uncheckAll; /* bndtools.release.ProjectListControl::createFilter */
+
+    public static String releaseOptionMustBeSpecified; /* bndtools.release.ui.WorkspaceReleaseDialog::okPressed */
+    public static String macrosWillBeOverwritten1; /* bndtools.release.ui.WorkspaceReleaseDialog::okPressed */
+    public static String macrosWillBeOverwritten2; /* bndtools.release.ui.WorkspaceReleaseDialog::okPressed */
+
     static {
         NLS.initializeMessages(RESOURCE_BUNDLE, Messages.class);
     }

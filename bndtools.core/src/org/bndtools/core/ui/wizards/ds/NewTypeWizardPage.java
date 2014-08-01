@@ -322,8 +322,8 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
     protected IStatus fModifierStatus;
     protected IStatus fSuperInterfacesStatus;
 
-    private final int PUBLIC_INDEX = 0, DEFAULT_INDEX = 1, PRIVATE_INDEX = 2, PROTECTED_INDEX = 3;
-    private final int ABSTRACT_INDEX = 0, FINAL_INDEX = 1, STATIC_INDEX = 2, ENUM_ANNOT_STATIC_INDEX = 1;
+    private static final int PUBLIC_INDEX = 0, DEFAULT_INDEX = 1, PRIVATE_INDEX = 2, PROTECTED_INDEX = 3;
+    private static final int ABSTRACT_INDEX = 0, FINAL_INDEX = 1, STATIC_INDEX = 2, ENUM_ANNOT_STATIC_INDEX = 1;
 
     private final int fTypeKind;
 
@@ -660,6 +660,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
      * @param nColumns
      *            number of columns to span
      */
+    @SuppressWarnings("unused")
     protected void createEnclosingTypeControls(Composite composite, int nColumns) {
         // #6891
         Composite tabGroup = new Composite(composite, SWT.NONE);
@@ -805,11 +806,12 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
         });
         tableViewer.setCellModifier(new ICellModifier() {
             public void modify(Object element, String property, Object value) {
-                if (element instanceof Item)
-                    element = ((Item) element).getData();
+                Object el = element;
+                if (el instanceof Item)
+                    el = ((Item) el).getData();
 
-                ((InterfaceWrapper) element).interfaceName = (String) value;
-                fSuperInterfacesDialogField.elementChanged((InterfaceWrapper) element);
+                ((InterfaceWrapper) el).interfaceName = (String) value;
+                fSuperInterfacesDialogField.elementChanged((InterfaceWrapper) el);
             }
 
             public Object getValue(Object element, String property) {
@@ -1008,7 +1010,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
     @Override
     protected void handleFieldChanged(String fieldName) {
         super.handleFieldChanged(fieldName);
-        if (fieldName == CONTAINER) {
+        if (CONTAINER.equals(fieldName)) {
             fPackageStatus = packageChanged();
             fEnclosingTypeStatus = enclosingTypeChanged();
             fTypeNameStatus = typeNameChanged();
@@ -1342,15 +1344,21 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
     protected IStatus containerChanged() {
         IStatus status = super.containerChanged();
         IPackageFragmentRoot root = getPackageFragmentRoot();
+        if (root == null) {
+            return status;
+        }
+
+        IJavaProject project = root.getJavaProject();
+
         if ((fTypeKind == ANNOTATION_TYPE || fTypeKind == ENUM_TYPE) && !status.matches(IStatus.ERROR)) {
-            if (root != null && !JavaModelUtil.is50OrHigher(root.getJavaProject())) {
+            if (!JavaModelUtil.is50OrHigher(project)) {
                 // error as createType will fail otherwise (bug 96928)
-                return new StatusInfo(IStatus.ERROR, Messages.format(NewWizardMessages.NewTypeWizardPage_warning_NotJDKCompliant, BasicElementLabels.getJavaElementName(root.getJavaProject().getElementName())));
+                return new StatusInfo(IStatus.ERROR, Messages.format(NewWizardMessages.NewTypeWizardPage_warning_NotJDKCompliant, BasicElementLabels.getJavaElementName(project.getElementName())));
             }
             if (fTypeKind == ENUM_TYPE) {
                 try {
                     // if findType(...) == null then Enum is unavailable
-                    if (findType(root.getJavaProject(), "java.lang.Enum") == null) //$NON-NLS-1$
+                    if (findType(project, "java.lang.Enum") == null) //$NON-NLS-1$
                         return new StatusInfo(IStatus.WARNING, NewWizardMessages.NewTypeWizardPage_warning_EnumClassNotFound);
                 } catch (JavaModelException e) {
                     JavaPlugin.log(e);
@@ -1359,9 +1367,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
         }
 
         fCurrPackageCompletionProcessor.setPackageFragmentRoot(root);
-        if (root != null) {
-            fEnclosingTypeCompletionProcessor.setPackageFragment(root.getPackageFragment("")); //$NON-NLS-1$
-        }
+        fEnclosingTypeCompletionProcessor.setPackageFragment(root.getPackageFragment("")); //$NON-NLS-1$
         return status;
     }
 
@@ -1396,6 +1402,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
         }
 
         if (project != null) {
+            assert (root != null);
             if (project.exists() && packName.length() > 0) {
                 try {
                     IPath rootPath = root.getPath();
@@ -1904,11 +1911,12 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
      *             Thrown when the operation was canceled.
      */
     public void createType(IProgressMonitor monitor) throws CoreException, InterruptedException {
-        if (monitor == null) {
-            monitor = new NullProgressMonitor();
+        IProgressMonitor monitorInternal = monitor;
+        if (monitorInternal == null) {
+            monitorInternal = new NullProgressMonitor();
         }
 
-        monitor.beginTask(NewWizardMessages.NewTypeWizardPage_operationdesc, 8);
+        monitorInternal.beginTask(NewWizardMessages.NewTypeWizardPage_operationdesc, 8);
 
         IPackageFragmentRoot root = getPackageFragmentRoot();
         IPackageFragment pack = getPackageFragment();
@@ -1918,9 +1926,9 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
 
         if (!pack.exists()) {
             String packName = pack.getElementName();
-            pack = root.createPackageFragment(packName, true, new SubProgressMonitor(monitor, 1));
+            pack = root.createPackageFragment(packName, true, new SubProgressMonitor(monitorInternal, 1));
         } else {
-            monitor.worked(1);
+            monitorInternal.worked(1);
         }
 
         boolean needsSave;
@@ -1942,11 +1950,11 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
                 lineDelimiter = StubUtility.getLineDelimiterUsed(pack.getJavaProject());
 
                 String cuName = getCompilationUnitName(typeName);
-                ICompilationUnit parentCU = pack.createCompilationUnit(cuName, "", false, new SubProgressMonitor(monitor, 2)); //$NON-NLS-1$
+                ICompilationUnit parentCU = pack.createCompilationUnit(cuName, "", false, new SubProgressMonitor(monitorInternal, 2)); //$NON-NLS-1$
                 // create a working copy with a new owner
 
                 needsSave = true;
-                parentCU.becomeWorkingCopy(new SubProgressMonitor(monitor, 1)); // cu is now a (primary) working copy
+                parentCU.becomeWorkingCopy(new SubProgressMonitor(monitorInternal, 1)); // cu is now a (primary) working copy
                 connectedCU = parentCU;
 
                 IBuffer buffer = parentCU.getBuffer();
@@ -1981,7 +1989,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
                 ICompilationUnit parentCU = enclosingType.getCompilationUnit();
 
                 needsSave = !parentCU.isWorkingCopy();
-                parentCU.becomeWorkingCopy(new SubProgressMonitor(monitor, 1)); // cu is now for sure (primary) a working copy
+                parentCU.becomeWorkingCopy(new SubProgressMonitor(monitorInternal, 1)); // cu is now for sure (primary) a working copy
                 connectedCU = parentCU;
 
                 CompilationUnit astRoot = createASTForImports(parentCU);
@@ -2020,11 +2028,11 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
                     sibling = elems.length > 0 ? elems[0] : null;
                 }
 
-                createdType = enclosingType.createType(content.toString(), sibling, false, new SubProgressMonitor(monitor, 2));
+                createdType = enclosingType.createType(content.toString(), sibling, false, new SubProgressMonitor(monitorInternal, 2));
 
                 indent = StubUtility.getIndentUsed(enclosingType) + 1;
             }
-            if (monitor.isCanceled()) {
+            if (monitorInternal.isCanceled()) {
                 throw new InterruptedException();
             }
 
@@ -2032,11 +2040,11 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
 
             ICompilationUnit cu = createdType.getCompilationUnit();
 
-            imports.create(false, new SubProgressMonitor(monitor, 1));
+            imports.create(false, new SubProgressMonitor(monitorInternal, 1));
 
             JavaModelUtil.reconcile(cu);
 
-            if (monitor.isCanceled()) {
+            if (monitorInternal.isCanceled()) {
                 throw new InterruptedException();
             }
 
@@ -2044,10 +2052,10 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
             CompilationUnit astRoot = createASTForImports(imports.getCompilationUnit());
             imports = new ImportsManager(astRoot);
 
-            createTypeMembers(createdType, imports, new SubProgressMonitor(monitor, 1));
+            createTypeMembers(createdType, imports, new SubProgressMonitor(monitorInternal, 1));
 
             // add imports
-            imports.create(false, new SubProgressMonitor(monitor, 1));
+            imports.create(false, new SubProgressMonitor(monitorInternal, 1));
 
             removeUnusedImports(cu, existingImports, false);
 
@@ -2070,16 +2078,16 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
             fCreatedType = createdType;
 
             if (needsSave) {
-                cu.commitWorkingCopy(true, new SubProgressMonitor(monitor, 1));
+                cu.commitWorkingCopy(true, new SubProgressMonitor(monitorInternal, 1));
             } else {
-                monitor.worked(1);
+                monitorInternal.worked(1);
             }
 
         } finally {
             if (connectedCU != null) {
                 connectedCU.discardWorkingCopy();
             }
-            monitor.done();
+            monitorInternal.done();
         }
     }
 
@@ -2092,6 +2100,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
     }
 
     private Set<String> getExistingImports(CompilationUnit root) {
+        @SuppressWarnings("unchecked")
         List<ImportDeclaration> imports = root.imports();
         Set<String> res = new HashSet<String>(imports.size());
         for (int i = 0; i < imports.size(); i++) {
@@ -2110,6 +2119,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
             return;
         }
 
+        @SuppressWarnings("unchecked")
         List<ImportDeclaration> importsDecls = root.imports();
         if (importsDecls.isEmpty()) {
             return;
@@ -2275,10 +2285,6 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
             type = "class "; //$NON-NLS-1$
             templateID = CodeGeneration.CLASS_BODY_TEMPLATE_ID;
             break;
-        case INTERFACE_TYPE :
-            type = "interface "; //$NON-NLS-1$
-            templateID = CodeGeneration.INTERFACE_BODY_TEMPLATE_ID;
-            break;
         case ENUM_TYPE :
             type = "enum "; //$NON-NLS-1$
             templateID = CodeGeneration.ENUM_BODY_TEMPLATE_ID;
@@ -2286,6 +2292,12 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
         case ANNOTATION_TYPE :
             type = "@interface "; //$NON-NLS-1$
             templateID = CodeGeneration.ANNOTATION_BODY_TEMPLATE_ID;
+            break;
+
+        case INTERFACE_TYPE :
+        default :
+            type = "interface "; //$NON-NLS-1$
+            templateID = CodeGeneration.INTERFACE_BODY_TEMPLATE_ID;
             break;
         }
         buf.append(type);
@@ -2331,6 +2343,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
      *             thrown when creation of the type members failed
      * @see #createType(IProgressMonitor)
      */
+    @SuppressWarnings("unused")
     protected void createTypeMembers(IType newType, final ImportsManager imports, IProgressMonitor monitor) throws CoreException {
         // default implementation does nothing
         // example would be
@@ -2345,6 +2358,7 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
      * @return returns the file template or <code>null</code>
      * @deprecated Instead of file templates, the new type code template specifies the stub for a compilation unit.
      */
+    @SuppressWarnings("unused")
     @Deprecated
     protected String getFileComment(ICompilationUnit parentCU) {
         return null;
@@ -2546,10 +2560,11 @@ public abstract class NewTypeWizardPage extends NewContainerWizardPage {
         return new IRunnableWithProgress() {
             public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
                 try {
-                    if (monitor == null) {
-                        monitor = new NullProgressMonitor();
+                    IProgressMonitor monitorInternal = monitor;
+                    if (monitorInternal == null) {
+                        monitorInternal = new NullProgressMonitor();
                     }
-                    createType(monitor);
+                    createType(monitorInternal);
                 } catch (CoreException e) {
                     throw new InvocationTargetException(e);
                 }

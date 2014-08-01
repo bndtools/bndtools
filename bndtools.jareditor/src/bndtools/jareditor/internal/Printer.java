@@ -84,9 +84,9 @@ public class Printer extends Processor {
             if ((options & IMPEXP) != 0) {
                 out.println("[IMPEXP]");
                 Manifest m = jar.getManifest();
-                Domain domain = Domain.domain(m);
 
                 if (m != null) {
+                    Domain domain = Domain.domain(m);
                     Parameters imports = domain.getImportPackage();
                     Parameters exports = domain.getExportPackage();
                     for (String p : exports.keySet()) {
@@ -106,18 +106,23 @@ public class Printer extends Processor {
             if ((options & (USES | USEDBY)) != 0) {
                 out.println();
                 Analyzer analyzer = new Analyzer();
-                analyzer.setPedantic(isPedantic());
-                analyzer.setJar(jar);
-                analyzer.analyze();
-                if ((options & USES) != 0) {
-                    out.println("[USES]");
-                    printMultiMap(analyzer.getUses());
-                    out.println();
-                }
-                if ((options & USEDBY) != 0) {
-                    out.println("[USEDBY]");
-                    Map<PackageRef,Set<PackageRef>> usedBy = CollectionUtil.invertMapOfCollection(analyzer.getUses());
-                    printMultiMap(usedBy);
+                try {
+                    analyzer.setPedantic(isPedantic());
+                    analyzer.setJar(jar);
+                    analyzer.analyze();
+                    if ((options & USES) != 0) {
+                        out.println("[USES]");
+                        printMultiMap(analyzer.getUses());
+                        out.println();
+                    }
+                    if ((options & USEDBY) != 0) {
+                        out.println("[USEDBY]");
+                        Map<PackageRef,Set<PackageRef>> usedBy = CollectionUtil.invertMapOfCollection(analyzer.getUses());
+                        printMultiMap(usedBy);
+                    }
+                    analyzer.setJar((Jar) null);
+                } finally {
+                    analyzer.close();
                 }
                 out.println();
             }

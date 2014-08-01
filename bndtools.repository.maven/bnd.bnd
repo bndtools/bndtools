@@ -1,22 +1,18 @@
-bin:
-
 Bundle-SymbolicName: bndtools.repository.maven;singleton:=true
 Bundle-Vendor: Bndtools
-Bundle-Version: ${master-version}
+Bundle-Version: 2.3.1.${tstamp}
 
 maven-minimal-template: templates/maven-minimal
 maven-minimal-template-resources: \
-	{${maven-minimal-template}=../bndtools.repository.base/templates/processed/bundlehub},\
+	${maven-minimal-template}=../bndtools.repository.base/templates/unprocessed/bundlehub,\
 	${maven-minimal-template}=../bndtools.repository.base/templates/unprocessed/common,\
 	${maven-minimal-template}=templates/unprocessed/maven-minimal,\
-	${maven-minimal-template}/buildrepo/org.junit/=../bndtools.repository.base/templates/repos/buildrepo/org.junit,\
-	${maven-minimal-template}/buildrepo/org.hamcrest/=../bndtools.repository.base/templates/repos/buildrepo/org.hamcrest,\
-	${maven-minimal-template}/plugins/biz.aQute.repository/=${repo;biz.aQute.repository;${aQute-repository-base}}
+	${maven-minimal-template}/buildrepo/junit/=../bndtools.repository.base/templates/repos/buildrepo/junit,\
+	${maven-minimal-template}/buildrepo/hamcrest-core/=../bndtools.repository.base/templates/repos/buildrepo/hamcrest-core,\
+	${maven-minimal-template}/plugins/biz.aQute.repository/biz.aQute.repository.jar=${repo;biz.aQute.repository;${aQute-repository-base}}
 
 Include-Resource:\
 	plugin.xml=_plugin.xml,\
 	icons/=../bndtools.repository.base/icons,\
 	templateDocs/=templateDocs,\
 	${maven-minimal-template-resources}
-
--removeheaders: Include-Resource, Private-Package
