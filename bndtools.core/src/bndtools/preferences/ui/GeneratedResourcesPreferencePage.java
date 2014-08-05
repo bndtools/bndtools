@@ -2,9 +2,7 @@ package bndtools.preferences.ui;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.bndtools.api.NamedPlugin;
 import org.bndtools.headless.build.manager.api.HeadlessBuildManager;
@@ -19,7 +17,11 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
@@ -163,38 +165,41 @@ public class GeneratedResourcesPreferencePage extends PreferencePage implements 
             btnHeadlessCreate.setText(Messages.BndPreferencePage_headlessCreate_text);
             btnHeadlessCreate.setSelection(headlessBuildCreate);
 
-            final Group headlessGroup = new Group(headlessMainGroup, SWT.NONE);
-            final Set<Button> headlessGroupButtons = new HashSet<Button>();
-
+            final Table headlessTable = new Table(headlessMainGroup, SWT.CHECK | SWT.FULL_SELECTION | SWT.BORDER | SWT.V_SCROLL);
+            
             for (NamedPlugin info : allPluginsInformation) {
-                final String pluginName = info.getName();
-                final Button btnHeadlessPlugin = new Button(headlessGroup, SWT.CHECK);
-                headlessGroupButtons.add(btnHeadlessPlugin);
+                String pluginName = info.getName();
+                TableItem itemHeadlessPlugin = new TableItem(headlessTable, SWT.NONE);
+                itemHeadlessPlugin.setData(pluginName);
                 if (info.isDeprecated()) {
-                    btnHeadlessPlugin.setText(pluginName + Messages.BndPreferencePage_namedPluginDeprecated_text);
+                    itemHeadlessPlugin.setText(pluginName + Messages.BndPreferencePage_namedPluginDeprecated_text);
                 } else {
-                    btnHeadlessPlugin.setText(pluginName);
+                    itemHeadlessPlugin.setText(pluginName);
                 }
                 Boolean checked = headlessBuildPlugins.get(pluginName);
                 if (checked == null) {
                     checked = Boolean.FALSE;
                     headlessBuildPlugins.put(pluginName, checked);
                 }
-                btnHeadlessPlugin.setSelection(checked.booleanValue());
-                btnHeadlessPlugin.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        headlessBuildPlugins.put(pluginName, Boolean.valueOf(btnHeadlessPlugin.getSelection()));
-                        checkValid();
-                    }
-                });
+                itemHeadlessPlugin.setChecked(checked.booleanValue());
             }
+            
+            headlessTable.addListener(SWT.Selection, new Listener() {
+				@Override
+				public void handleEvent(Event event) {
+					if (event.detail != SWT.CHECK) {
+						return;
+					}
+
+					TableItem item = (TableItem) event.item;
+					String pluginName = (String) item.getData();
+					headlessBuildPlugins.put(pluginName, item.getChecked());
+					checkValid();
+				}
+			});
 
             gd = new GridData(SWT.FILL, SWT.FILL, true, false);
-            headlessGroup.setLayoutData(gd);
-
-            layout = new GridLayout(Math.max(4, allPluginsInformation.size()), true);
-            headlessGroup.setLayout(layout);
+            headlessTable.setLayoutData(gd);
 
             gd = new GridData(SWT.FILL, SWT.FILL, true, false);
             headlessMainGroup.setLayoutData(gd);
@@ -249,9 +254,7 @@ public class GeneratedResourcesPreferencePage extends PreferencePage implements 
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     headlessBuildCreate = btnHeadlessCreate.getSelection();
-                    for (Button button : headlessGroupButtons) {
-                        button.setEnabled(headlessBuildCreate);
-                    }
+                    headlessTable.setEnabled(headlessBuildCreate);
                     checkValid();
                 }
             });
@@ -266,38 +269,41 @@ public class GeneratedResourcesPreferencePage extends PreferencePage implements 
             btnVersionControlIgnoresCreate.setText(Messages.BndPreferencePage_versionControlIgnoresCreate_text);
             btnVersionControlIgnoresCreate.setSelection(versionControlIgnoresCreate);
 
-            Group versionControlIgnoresGroup = new Group(versionControlIgnoresMainGroup, SWT.NONE);
-            final Set<Button> versionControlIgnoresGroupButtons = new HashSet<Button>();
+            final Table versionControlIgnoresTable = new Table(versionControlIgnoresMainGroup, SWT.CHECK | SWT.FULL_SELECTION | SWT.BORDER | SWT.V_SCROLL);
 
             for (NamedPlugin info : allPluginsInformation) {
-                final String pluginName = info.getName();
-                final Button btnVersionControlIgnoresPlugin = new Button(versionControlIgnoresGroup, SWT.CHECK);
-                versionControlIgnoresGroupButtons.add(btnVersionControlIgnoresPlugin);
+                String pluginName = info.getName();
+                TableItem itemVersionControlIgnoresPlugin = new TableItem(versionControlIgnoresTable, SWT.NONE);
+                itemVersionControlIgnoresPlugin.setData(pluginName);
                 if (info.isDeprecated()) {
-                    btnVersionControlIgnoresPlugin.setText(pluginName + Messages.BndPreferencePage_namedPluginDeprecated_text);
+                    itemVersionControlIgnoresPlugin.setText(pluginName + Messages.BndPreferencePage_namedPluginDeprecated_text);
                 } else {
-                    btnVersionControlIgnoresPlugin.setText(pluginName);
+                    itemVersionControlIgnoresPlugin.setText(pluginName);
                 }
                 Boolean checked = versionControlIgnoresPlugins.get(pluginName);
                 if (checked == null) {
                     checked = Boolean.FALSE;
                     versionControlIgnoresPlugins.put(pluginName, checked);
                 }
-                btnVersionControlIgnoresPlugin.setSelection(checked.booleanValue());
-                btnVersionControlIgnoresPlugin.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        versionControlIgnoresPlugins.put(pluginName, btnVersionControlIgnoresPlugin.getSelection());
-                        checkValid();
-                    }
-                });
+                itemVersionControlIgnoresPlugin.setChecked(checked.booleanValue());
             }
+            
+            versionControlIgnoresTable.addListener(SWT.Selection, new Listener() {
+				@Override
+				public void handleEvent(Event event) {
+					if (event.detail != SWT.CHECK) {
+						return;
+					}
+
+					TableItem item = (TableItem) event.item;
+					String pluginName = (String) item.getData();
+                    versionControlIgnoresPlugins.put(pluginName, item.getChecked());
+					checkValid();
+				}
+			});
 
             gd = new GridData(SWT.FILL, SWT.FILL, true, false);
-            versionControlIgnoresGroup.setLayoutData(gd);
-
-            layout = new GridLayout(Math.max(4, allPluginsInformation.size()), true);
-            versionControlIgnoresGroup.setLayout(layout);
+            versionControlIgnoresTable.setLayoutData(gd);
 
             gd = new GridData(SWT.FILL, SWT.FILL, true, false);
             versionControlIgnoresMainGroup.setLayoutData(gd);
@@ -309,9 +315,7 @@ public class GeneratedResourcesPreferencePage extends PreferencePage implements 
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     versionControlIgnoresCreate = btnVersionControlIgnoresCreate.getSelection();
-                    for (Button button : versionControlIgnoresGroupButtons) {
-                        button.setEnabled(versionControlIgnoresCreate);
-                    }
+                    versionControlIgnoresTable.setEnabled(versionControlIgnoresCreate);
                     checkValid();
                 }
             });
