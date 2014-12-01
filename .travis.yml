@@ -5,6 +5,6 @@ jdk:
 env:
   - TERM=dumb
 
-install: ./gradlew --version
+install: ./gradlew -Pbnd_repourl=https://bndtools.ci.cloudbees.com/job/bnd.next/lastSuccessfulBuild/artifact/dist/bundles --version
 
-script: ./gradlew --continue
+script: ./gradlew -Pbnd_repourl=https://bndtools.ci.cloudbees.com/job/bnd.next/lastSuccessfulBuild/artifact/dist/bundles --continue
