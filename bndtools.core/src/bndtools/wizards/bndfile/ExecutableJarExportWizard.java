@@ -83,6 +83,7 @@ public class ExecutableJarExportWizard extends Wizard implements IRunDescription
         MultiStatus status = new MultiStatus(Plugin.PLUGIN_ID, 0, "Errors occurred during exporting.", null);
         try {
             ProjectLauncher launcher = bndProject.getProjectLauncher();
+            launcher.setCwd(bndProject.getBase());
             Jar jar = launcher.executable();
             jar.write(jarPath);
         } catch (Exception e) {
