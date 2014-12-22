@@ -159,6 +159,13 @@ public class NewBuilder extends IncrementalProjectBuilder {
                 return dependsOn;
             }
 
+            //[cs] This should already reset classpaths when they need to be.
+            if (BndContainerInitializer.resetClasspaths(model, myProject, classpathErrors)) {
+                log(LOG_BASIC, "classpaths were changed");
+            } else {
+                log(LOG_FULL, "classpaths did not need to change");
+            }
+            
             // CASE 2: local Bnd file changed, or Eclipse asks for full build
             boolean localChange = false;
             if (kind == FULL_BUILD) {
