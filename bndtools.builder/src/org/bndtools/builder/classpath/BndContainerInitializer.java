@@ -266,7 +266,8 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
                         cpe = JavaCore.newProjectEntry(resource.getProject().getFullPath(), accessRules, false, extraAttrs, true);
                     } else {
                         IAccessRule[] accessRules = calculateRepoBundleAccessRules(c);
-                        cpe = JavaCore.newLibraryEntry(p, null, null, accessRules, extraAttrs, false);
+                        boolean transitive = Boolean.parseBoolean(model.getProperty(aQute.bnd.osgi.Constants.TRANSITIVE, "false"));
+                        cpe = JavaCore.newLibraryEntry(p, null, null, accessRules, extraAttrs, transitive);
                     }
                     result.add(cpe);
                 }
