@@ -151,42 +151,32 @@ public class Central implements IStartupParticipant {
                             System.out.println("Cannot convert resource to file: " + delta.getResource());
                         } else {
                             File file = location.toFile();
-                            File parent = file.getParentFile();
-                            boolean parentIsWorkspace = parent.equals(getWorkspace().getBase());
 
-                            // file
-                            // /development/osgi/svn/build/org.osgi.test.cases.distribution/bnd.bnd
-                            // parent
-                            // /development/osgi/svn/build/org.osgi.test.cases.distribution
-                            // workspace /development/amf/workspaces/osgi
-                            // false
-
-                            if (parentIsWorkspace) {
-                                // We now are on project level, we do not go
-                                // deeper
-                                // because projects/workspaces should check for
-                                // any
-                                // changes.
-                                // We are careful not to create unnecessary
-                                // projects
-                                // here.
-                                if (file.getName().equals(Workspace.CNFDIR)) {
-                                    if (workspace.refresh()) {
-                                        changed.addAll(workspace.getCurrentProjects());
-                                    }
-                                    return false;
-                                }
-                                if (workspace.isPresent(file.getName())) {
-                                    Project project = workspace.getProject(file.getName());
-                                    changed.add(project);
-                                } else {
-                                    // Project not created yet, so we
-                                    // have
-                                    // no cached results
-
+                            // We now are on project level, we do not go
+                            // deeper
+                            // because projects/workspaces should check for
+                            // any
+                            // changes.
+                            // We are careful not to create unnecessary
+                            // projects
+                            // here.
+                            if (file.getName().equals(Workspace.CNFDIR)) {
+                                if (workspace.refresh()) {
+                                    changed.addAll(workspace.getCurrentProjects());
                                 }
                                 return false;
                             }
+                            if (workspace.isPresent(file)) {
+                                Project project = workspace.getProjectByFile(file);
+                                changed.add(project);
+                            } else {
+                                // Project not created yet, so we
+                                // have
+                                // no cached results
+
+                            }
+                            return false;
+
                         }
                         return true;
                     } catch (Exception e) {
@@ -578,7 +568,7 @@ public class Central implements IStartupParticipant {
         assert projectDirAbsolute.isDirectory();
 
         Workspace ws = getWorkspace();
-        return ws.getProject(projectDir.getName());
+        return ws.getProjectByFile(projectDir);
     }
 
     public static Project getProject(IProject p) throws Exception {
