@@ -40,7 +40,7 @@ public final class LaunchUtils {
         IProject project = launchResource.getProject();
         Project bnd;
         try {
-            bnd = Central.getWorkspace().getProject(project.getName());
+            bnd = Central.getProject(project);
         } catch (Exception e) {
             bnd = null;
         }
