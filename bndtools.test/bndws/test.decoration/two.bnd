@@ -1,0 +1,2 @@
+Private-Package: example.extra.contained
+Export-Package: example.extra.exported
