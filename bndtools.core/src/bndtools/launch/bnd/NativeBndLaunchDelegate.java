@@ -39,7 +39,7 @@ import bndtools.preferences.BndPreferences;
  * features in bnd and we are sure fidelity is maintained.
  */
 public class NativeBndLaunchDelegate extends JavaRemoteApplicationLaunchConfigurationDelegate {
-    volatile boolean canceled = false;
+    volatile boolean canceled = false; // who can set this to true?
 
     /*
      * The Eclipse launch interface.
@@ -120,6 +120,8 @@ public class NativeBndLaunchDelegate extends JavaRemoteApplicationLaunchConfigur
                         try {
 
                             monitor.setTaskName("validating session " + session.getLabel());
+                            // how can we validate which will wait for the remote agent to phone home but the remote agent isn't install yet until the launchThread starts?
+                            // does this native launcher assume that the biz.aQute.remote.agent is already installed in a remote system and is running?
                             if (!session.validate(isCancelled)) {
                                 continue;
                             }
