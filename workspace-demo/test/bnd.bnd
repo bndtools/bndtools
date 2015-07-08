@@ -1,4 +1,0 @@
-Bundle-Version: 0.0.0.${tstamp}
--runrequires: osgi.identity;filter:='(osgi.identity=org.apache.cxf.cxf-rt-core)'
--runfw: org.apache.felix.framework;version='[4.4.1,4.4.1]'
--runee: JavaSE-1.7
