@@ -246,6 +246,10 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
 
     private final AtomicBoolean saving = new AtomicBoolean(false);
 
+    private boolean shouldAutoResolve() {
+        return getResolveMode() == ResolveMode.auto && !model.getRunRequires().isEmpty() && !PlatformUI.getWorkbench().isClosing();
+    }
+
     @Override
     public void doSave(IProgressMonitor monitor) {
         final Shell shell = getEditorSite().getShell();
@@ -258,10 +262,8 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
             sourcePage.refresh();
         }
 
-        ResolveMode resolveMode = getResolveMode();
-
         // If auto resolve, then resolve and save in background thread.
-        if (resolveMode == ResolveMode.auto && !PlatformUI.getWorkbench().isClosing()) {
+        if (shouldAutoResolve()) {
             final IFile file = ResourceUtil.getFile(getEditorInput());
             if (file == null) {
                 MessageDialog.openError(shell, "Resolution Error", "Unable to run resolution because the file is not in the workspace. NB.: the file will still be saved.");
