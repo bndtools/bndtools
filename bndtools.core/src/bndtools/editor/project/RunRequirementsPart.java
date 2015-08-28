@@ -269,6 +269,7 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
                     requires.addAll(adding);
                     viewer.add(adding.toArray(new Object[adding.size()]));
                     markDirty();
+                    updateButtonStates();
                 }
             }
         } catch (Exception e) {
@@ -291,6 +292,7 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
             if (!removed.isEmpty()) {
                 viewer.remove(removed.toArray(new Object[removed.size()]));
                 markDirty();
+                updateButtonStates();
             }
         }
     }
@@ -453,7 +455,7 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
     }
 
     private void updateButtonStates() {
-        // btnResolveNow.setEnabled(resolveMode != ResolveMode.auto);
+        btnResolveNow.setEnabled(!requires.isEmpty());
     }
 
     @Override
@@ -492,6 +494,7 @@ public class RunRequirementsPart extends SectionPart implements PropertyChangeLi
                 requires.addAll(adding);
                 viewer.add(adding.toArray(new Object[adding.size()]));
                 markDirty();
+                updateButtonStates();
                 return true;
             }
             return false;
