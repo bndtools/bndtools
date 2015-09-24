@@ -1,0 +1,11 @@
+# Example Project Template
+# Make sure to edit the name and category.
+
+Provide-Capability: \
+	org.bndtools.template;\
+		org.bndtools.template=project; \
+		name=<projectName>; \
+		category=Examples; \
+		ranking:Double = 0
+
+-includeresource: template=template
