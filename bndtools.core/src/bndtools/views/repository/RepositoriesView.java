@@ -629,7 +629,6 @@ public class RepositoriesView extends ViewPart implements RepositoriesViewRefres
                                                         e.getValue().run();
                                                         if (rp != null && rp instanceof Refreshable)
                                                             Central.refreshPlugin((Refreshable) rp);
-                                                        Thread.currentThread().sleep(10000);
                                                     } catch (final Exception e) {
                                                         Display.getDefault().asyncExec(new Runnable() {
                                                             @Override
