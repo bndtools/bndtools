@@ -26,6 +26,7 @@ import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -44,6 +45,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.ToolBar;
@@ -257,8 +259,8 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
             WizardDialog dialog = new WizardDialog(getSection().getShell(), wizard);
 
             if (Window.OK == dialog.open()) {
-                List<VersionedClause> result = wizard.getSelectedBundles();
-                List<Requirement> adding = new ArrayList<Requirement>(result.size());
+                final List<VersionedClause> result = wizard.getSelectedBundles();
+                final List<Requirement> adding = new ArrayList<Requirement>(result.size());
                 for (VersionedClause bundle : result) {
                     Filter filter = new SimpleFilter(IdentityNamespace.IDENTITY_NAMESPACE, bundle.getName());
 
@@ -269,11 +271,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
                     Requirement req = new CapReqBuilder(IdentityNamespace.IDENTITY_NAMESPACE).addDirective(Namespace.REQUIREMENT_FILTER_DIRECTIVE, filter.toString()).buildSyntheticRequirement();
                     adding.add(req);
                 }
-                if (!adding.isEmpty()) {
-                    requires.addAll(adding);
-                    viewer.add(adding.toArray(new Object[adding.size()]));
-                    markDirty();
-                }
+                addRequirementWithCheckForExisting(adding);
             }
         } catch (Exception e) {
             ErrorDialog.openError(getSection().getShell(), "Error", null, new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error selecting bundles.", e));
@@ -453,6 +451,46 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
         }
     }
 
+    /**
+     * Checks the given List for duplicates against the requirements already available.
+     * 
+     * @param adding
+     *            List with {@link Requirement}s to add
+     */
+    private void addRequirementWithCheckForExisting(List<Requirement> adding) {
+        final List<Requirement> alreadyAvailable = new ArrayList<>(adding.size());
+        final List<Requirement> finalResult = new ArrayList<>(adding.size());
+        // check for duplicates
+        for (Requirement req : adding) {
+            if (requires.contains(req)) {
+                alreadyAvailable.add(req);
+            } else {
+                finalResult.add(req);
+            }
+        }
+
+        if (!finalResult.isEmpty()) {
+            requires.addAll(finalResult);
+            viewer.add(finalResult.toArray(new Object[finalResult.size()]));
+            markDirty();
+        }
+
+        //Display duplicates
+        if (!alreadyAvailable.isEmpty()) {
+            Display.getDefault().asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Following Requirements have not been added since they are already available:\n\n");
+                    for (Requirement req : alreadyAvailable) {
+                        sb.append(req).append("\n");
+                    }
+                    MessageDialog.openInformation(PlatformUI.getWorkbench().getModalDialogShellProvider().getShell(), "Duplicates ignored", sb.toString());
+                }
+            });
+        }
+    }
+
     private class RequirementViewerDropAdapter extends AbstractViewerDropAdapter {
 
         public RequirementViewerDropAdapter() {
@@ -474,9 +512,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
             }
 
             if (!adding.isEmpty()) {
-                requires.addAll(adding);
-                viewer.add(adding.toArray(new Object[adding.size()]));
-                markDirty();
+                addRequirementWithCheckForExisting(adding);
                 return true;
             }
             return false;
