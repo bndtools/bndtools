@@ -648,7 +648,7 @@ public class RepositoriesView extends ViewPart implements RepositoriesViewRefres
                                                     if (event.getResult().isOK()) {
                                                         viewer.refresh();
                                                     }
-                                                };
+                                                }
                                             });
 
                                             backgroundJob.setUser(true);
