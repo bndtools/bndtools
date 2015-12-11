@@ -34,6 +34,9 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.IJobChangeEvent;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IMenuListener;
@@ -68,6 +71,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.ISharedImages;
@@ -81,6 +85,7 @@ import org.eclipse.ui.part.ResourceTransfer;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.resource.Requirement;
+
 
 import aQute.bnd.service.Actionable;
 import aQute.bnd.service.Refreshable;
@@ -613,17 +618,43 @@ public class RepositoriesView extends ViewPart implements RepositoriesViewRefres
 
                                         description = m.group(4);
                                     }
-                                    Action a = new Action(label) {
+                                    final Action a = new Action(label) {
                                         @Override
                                         public void run() {
-                                            try {
-                                                e.getValue().run();
-                                                if (rp != null && rp instanceof Refreshable)
-                                                    Central.refreshPlugin((Refreshable) rp);
-                                            } catch (Exception e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            viewer.refresh();
+                                            Job backgroundJob = new Job("Repository Action '" + getText() + "'") {
+
+                                                @Override
+                                                protected IStatus run(IProgressMonitor monitor) {
+                                                    try {
+                                                        e.getValue().run();
+                                                        if (rp != null && rp instanceof Refreshable)
+                                                            Central.refreshPlugin((Refreshable) rp);
+                                                        Thread.currentThread().sleep(10000);
+                                                    } catch (final Exception e) {
+                                                        Display.getDefault().asyncExec(new Runnable() {
+                                                            @Override
+                                                            public void run() {
+                                                                MessageDialog.openError(PlatformUI.getWorkbench().getModalDialogShellProvider().getShell(), "Error executing: " + getName(), e.getMessage());
+                                                            }
+                                                        });
+                                                    }
+                                                    monitor.done();
+                                                    return Status.OK_STATUS;
+                                                }
+                                            };
+
+                                            backgroundJob.addJobChangeListener(new JobChangeAdapter() {
+                                                @Override
+                                                public void done(IJobChangeEvent event) {
+                                                    if (event.getResult().isOK()) {
+                                                        viewer.refresh();
+                                                    }
+                                                };
+                                            });
+
+                                            backgroundJob.setUser(true);
+                                            backgroundJob.setPriority(Job.SHORT);
+                                            backgroundJob.schedule();
                                         }
                                     };
                                     a.setEnabled(enabled);
