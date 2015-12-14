@@ -454,23 +454,18 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
     }
 
     /**
-     * Update the requirements already available with new ones. Requirements are compared with the ones already in the
-     * viewer.
+     * Update the requirements already available with new ones. Already existing requirements will be removed from the
+     * given set.
      *
      * @param adding
      *            Set with {@link Requirement}s to add
      */
     private void updateViewerWithNewRequirements(Set<Requirement> adding) {
-        final List<Requirement> finalResult = new ArrayList<>(adding.size());
-        // check for duplicates
-        for (Requirement req : adding) {
-            if (!requires.contains(req)) {
-                finalResult.add(req);
-            }
-        }
-        if (!finalResult.isEmpty()) {
-            requires.addAll(finalResult);
-            viewer.add(finalResult.toArray(new Object[finalResult.size()]));
+        // remove duplicates
+        adding.removeAll(requires);
+        if (!adding.isEmpty()) {
+            requires.addAll(adding);
+            viewer.add(adding.toArray(new Object[adding.size()]));
             markDirty();
         }
     }
