@@ -5,9 +5,11 @@ import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
@@ -26,7 +28,6 @@ import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -45,7 +46,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.ToolBar;
@@ -260,7 +260,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
 
             if (Window.OK == dialog.open()) {
                 final List<VersionedClause> result = wizard.getSelectedBundles();
-                final List<Requirement> adding = new ArrayList<Requirement>(result.size());
+                final Set<Requirement> adding = new HashSet<Requirement>(result.size());
                 for (VersionedClause bundle : result) {
                     Filter filter = new SimpleFilter(IdentityNamespace.IDENTITY_NAMESPACE, bundle.getName());
 
@@ -271,7 +271,9 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
                     Requirement req = new CapReqBuilder(IdentityNamespace.IDENTITY_NAMESPACE).addDirective(Namespace.REQUIREMENT_FILTER_DIRECTIVE, filter.toString()).buildSyntheticRequirement();
                     adding.add(req);
                 }
-                addRequirementWithCheckForExisting(adding);
+                if (!adding.isEmpty()) {
+                    updateViewerWithNewRequirements(adding);
+                }
             }
         } catch (Exception e) {
             ErrorDialog.openError(getSection().getShell(), "Error", null, new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error selecting bundles.", e));
@@ -452,42 +454,24 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
     }
 
     /**
-     * Checks the given List for duplicates against the requirements already available.
-     * 
+     * Update the requirements already available with new ones. Requirements are compared with the ones already in the
+     * viewer.
+     *
      * @param adding
-     *            List with {@link Requirement}s to add
+     *            Set with {@link Requirement}s to add
      */
-    private void addRequirementWithCheckForExisting(List<Requirement> adding) {
-        final List<Requirement> alreadyAvailable = new ArrayList<>(adding.size());
+    private void updateViewerWithNewRequirements(Set<Requirement> adding) {
         final List<Requirement> finalResult = new ArrayList<>(adding.size());
         // check for duplicates
         for (Requirement req : adding) {
-            if (requires.contains(req)) {
-                alreadyAvailable.add(req);
-            } else {
+            if (!requires.contains(req)) {
                 finalResult.add(req);
             }
         }
-
         if (!finalResult.isEmpty()) {
             requires.addAll(finalResult);
             viewer.add(finalResult.toArray(new Object[finalResult.size()]));
             markDirty();
-        }
-
-        //Display duplicates
-        if (!alreadyAvailable.isEmpty()) {
-            Display.getDefault().asyncExec(new Runnable() {
-                @Override
-                public void run() {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Following Requirements have not been added since they are already available:\n\n");
-                    for (Requirement req : alreadyAvailable) {
-                        sb.append(req).append("\n");
-                    }
-                    MessageDialog.openInformation(PlatformUI.getWorkbench().getModalDialogShellProvider().getShell(), "Duplicates ignored", sb.toString());
-                }
-            });
         }
     }
 
@@ -499,7 +483,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
 
         @Override
         protected boolean performSelectionDrop(ISelection data, Object target, int location) {
-            List<Requirement> adding = new LinkedList<Requirement>();
+            Set<Requirement> adding = new HashSet<Requirement>();
 
             if (data instanceof IStructuredSelection) {
                 IStructuredSelection structSel = (IStructuredSelection) data;
@@ -512,7 +496,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
             }
 
             if (!adding.isEmpty()) {
-                addRequirementWithCheckForExisting(adding);
+                updateViewerWithNewRequirements(adding);
                 return true;
             }
             return false;
