@@ -71,7 +71,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.ISharedImages;
@@ -85,7 +84,6 @@ import org.eclipse.ui.part.ResourceTransfer;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.resource.Requirement;
-
 
 import aQute.bnd.service.Actionable;
 import aQute.bnd.service.Refreshable;
@@ -630,12 +628,8 @@ public class RepositoriesView extends ViewPart implements RepositoriesViewRefres
                                                         if (rp != null && rp instanceof Refreshable)
                                                             Central.refreshPlugin((Refreshable) rp);
                                                     } catch (final Exception e) {
-                                                        Display.getDefault().asyncExec(new Runnable() {
-                                                            @Override
-                                                            public void run() {
-                                                                MessageDialog.openError(PlatformUI.getWorkbench().getModalDialogShellProvider().getShell(), "Error executing: " + getName(), e.getMessage());
-                                                            }
-                                                        });
+                                                        IStatus status = new Status(IStatus.ERROR, Plugin.getDefault().getBundle().getSymbolicName(), "Error executing: " + getName(), e);
+                                                        Plugin.getDefault().getLog().log(status);
                                                     }
                                                     monitor.done();
                                                     return Status.OK_STATUS;
