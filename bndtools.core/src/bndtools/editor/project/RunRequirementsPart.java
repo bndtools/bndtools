@@ -5,9 +5,11 @@ import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
@@ -257,8 +259,8 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
             WizardDialog dialog = new WizardDialog(getSection().getShell(), wizard);
 
             if (Window.OK == dialog.open()) {
-                List<VersionedClause> result = wizard.getSelectedBundles();
-                List<Requirement> adding = new ArrayList<Requirement>(result.size());
+                final List<VersionedClause> result = wizard.getSelectedBundles();
+                final Set<Requirement> adding = new HashSet<Requirement>(result.size());
                 for (VersionedClause bundle : result) {
                     Filter filter = new SimpleFilter(IdentityNamespace.IDENTITY_NAMESPACE, bundle.getName());
 
@@ -270,9 +272,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
                     adding.add(req);
                 }
                 if (!adding.isEmpty()) {
-                    requires.addAll(adding);
-                    viewer.add(adding.toArray(new Object[adding.size()]));
-                    markDirty();
+                    updateViewerWithNewRequirements(adding);
                 }
             }
         } catch (Exception e) {
@@ -453,6 +453,23 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
         }
     }
 
+    /**
+     * Update the requirements already available with new ones. Already existing requirements will be removed from the
+     * given set.
+     *
+     * @param adding
+     *            Set with {@link Requirement}s to add
+     */
+    private void updateViewerWithNewRequirements(Set<Requirement> adding) {
+        // remove duplicates
+        adding.removeAll(requires);
+        if (!adding.isEmpty()) {
+            requires.addAll(adding);
+            viewer.add(adding.toArray(new Object[adding.size()]));
+            markDirty();
+        }
+    }
+
     private class RequirementViewerDropAdapter extends AbstractViewerDropAdapter {
 
         public RequirementViewerDropAdapter() {
@@ -461,7 +478,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
 
         @Override
         protected boolean performSelectionDrop(ISelection data, Object target, int location) {
-            List<Requirement> adding = new LinkedList<Requirement>();
+            Set<Requirement> adding = new HashSet<Requirement>();
 
             if (data instanceof IStructuredSelection) {
                 IStructuredSelection structSel = (IStructuredSelection) data;
@@ -474,9 +491,7 @@ public class RunRequirementsPart extends BndEditorPart implements PropertyChange
             }
 
             if (!adding.isEmpty()) {
-                requires.addAll(adding);
-                viewer.add(adding.toArray(new Object[adding.size()]));
-                markDirty();
+                updateViewerWithNewRequirements(adding);
                 return true;
             }
             return false;
