@@ -12,10 +12,11 @@ package bndtools.jareditor.internal;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.jar.JarEntry;
 import java.util.zip.ZipEntry;
 
@@ -26,7 +27,7 @@ class ZipTreeNode implements IAdaptable {
     private final ZipTreeNode parent;
     private final String name;
     private final ZipEntry entry;
-    private final Map<String,ZipTreeNode> children = new LinkedHashMap<String,ZipTreeNode>();
+    private final Map<String,ZipTreeNode> children = new TreeMap<String,ZipTreeNode>(new ChildComparator());
 
     private ZipTreeNode(ZipTreeNode parent, String name, ZipEntry entry) {
         this.parent = parent;
@@ -91,12 +92,26 @@ class ZipTreeNode implements IAdaptable {
         return path;
     }
 
-    public Object getAdapter(@SuppressWarnings("rawtypes")
-    Class adapter) {
+    @Override
+    public Object getAdapter(@SuppressWarnings("rawtypes") Class adapter) {
         if (adapter == JarEntry.class) {
             return entry;
         }
         return null;
+    }
+
+    private static class ChildComparator implements Comparator<String> {
+        @Override
+        public int compare(String s1, String s2) {
+            boolean dir1 = s1.endsWith("/");
+            boolean dir2 = s2.endsWith("/");
+
+            if ((dir1 && dir2) || (!dir1 && !dir2)) {
+                return s1.compareTo(s2);
+            }
+
+            return dir1 ? -1 : 1;
+        }
     }
 
 }
