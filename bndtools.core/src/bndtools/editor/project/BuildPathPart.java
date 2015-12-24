@@ -26,6 +26,11 @@ public class BuildPathPart extends RepositoryBundleSelectionPart {
     }
 
     @Override
+    protected boolean isSortable() {
+        return true;
+    }
+
+    @Override
     protected int getTableHeightHint() {
         return 50;
     }

@@ -14,6 +14,7 @@ import java.util.ListIterator;
 import java.util.Set;
 
 import org.bndtools.core.ui.wizards.jpm.AddJpmDependenciesWizard;
+import org.bndtools.utils.collections.CollectionUtils;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -42,6 +43,7 @@ import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -55,6 +57,8 @@ import org.eclipse.ui.forms.editor.IFormPage;
 import org.eclipse.ui.forms.widgets.FormToolkit;
 import org.eclipse.ui.forms.widgets.Section;
 import org.eclipse.ui.part.ResourceTransfer;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
+
 import aQute.bnd.build.model.BndEditModel;
 import aQute.bnd.build.model.clauses.VersionedClause;
 import aQute.bnd.header.Attrs;
@@ -85,6 +89,10 @@ public abstract class RepositoryBundleSelectionPart extends BndEditorPart implem
     private BndEditModel model;
     protected List<VersionedClause> bundles;
     protected ToolItem removeItemTool;
+    private final List<ToolItem> sortToolItems = new ArrayList<>();
+
+    private final Image imgUp = AbstractUIPlugin.imageDescriptorFromPlugin(Plugin.PLUGIN_ID, "/icons/arrow_up.png").createImage();
+    private final Image imgDown = AbstractUIPlugin.imageDescriptorFromPlugin(Plugin.PLUGIN_ID, "/icons/arrow_down.png").createImage();
 
     protected RepositoryBundleSelectionPart(String propertyName, DependencyPhase phase, Composite parent, FormToolkit toolkit, int style) {
         super(parent, toolkit, style);
@@ -161,6 +169,38 @@ public abstract class RepositoryBundleSelectionPart extends BndEditorPart implem
         viewer.setContentProvider(new ArrayContentProvider());
         viewer.setLabelProvider(getLabelProvider());
 
+        if (isSortable()) {
+            toolbar = new ToolBar(composite, SWT.FLAT | SWT.HORIZONTAL | SWT.RIGHT);
+
+            ToolItem btnMoveUp = new ToolItem(toolbar, SWT.PUSH);
+            btnMoveUp.setText("Up");
+            btnMoveUp.setImage(imgUp);
+            btnMoveUp.setEnabled(true);
+
+            ToolItem btnMoveDown = new ToolItem(toolbar, SWT.PUSH);
+            btnMoveDown.setText("Down");
+            btnMoveDown.setImage(imgDown);
+            btnMoveDown.setEnabled(true);
+
+            btnMoveUp.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    doMoveUp();
+                }
+            });
+            btnMoveDown.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    doMoveDown();
+                }
+            });
+
+            sortToolItems.add(btnMoveUp);
+            sortToolItems.add(btnMoveDown);
+
+            toolbar.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+        }
+
         // Listeners
         viewer.addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
@@ -168,6 +208,9 @@ public abstract class RepositoryBundleSelectionPart extends BndEditorPart implem
                 ToolItem remove = getRemoveItemTool();
                 if (remove != null)
                     remove.setEnabled(isRemovable(event.getSelection()));
+                for (ToolItem item : sortToolItems) {
+                    item.setEnabled(!event.getSelection().isEmpty());
+                }
             }
         });
         ViewerDropAdapter dropAdapter = new ViewerDropAdapter(viewer) {
@@ -456,9 +499,39 @@ public abstract class RepositoryBundleSelectionPart extends BndEditorPart implem
         }
     }
 
+    void doMoveUp() {
+        int[] selectedIndexes = findSelectedIndexes();
+        if (CollectionUtils.moveUp(bundles, selectedIndexes)) {
+            viewer.refresh();
+            markDirty();
+        }
+    }
+
+    void doMoveDown() {
+        int[] selectedIndexes = findSelectedIndexes();
+        if (CollectionUtils.moveDown(bundles, selectedIndexes)) {
+            viewer.refresh();
+            markDirty();
+        }
+    }
+
+    int[] findSelectedIndexes() {
+        Object[] selection = ((IStructuredSelection) viewer.getSelection()).toArray();
+        int[] selectionIndexes = new int[selection.length];
+
+        for (int i = 0; i < selection.length; i++) {
+            selectionIndexes[i] = bundles.indexOf(selection[i]);
+        }
+        return selectionIndexes;
+    }
+
     @Override
     public void commitToModel(boolean onSave) {
         saveToModel(model, bundles);
+    }
+
+    protected boolean isSortable() {
+        return false;
     }
 
     protected abstract void saveToModel(BndEditModel model, List<VersionedClause> bundles);
