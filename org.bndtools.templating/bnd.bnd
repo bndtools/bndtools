@@ -17,5 +17,5 @@
 
 Private-Package: org.bndtools.templating.*
 Export-Package: ${packages;ANNOTATED;aQute.bnd.annotation.Version}
-
 Conditional-Package: org.stringtemplate.*, st4hidden.*, aQute.lib.*, aQute.libg.*
+Bundle-ActivationPolicy: lazy
