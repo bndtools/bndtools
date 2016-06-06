@@ -41,6 +41,7 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import aQute.bnd.build.Project;
 import aQute.lib.io.IO;
 import bndtools.central.Central;
+import bndtools.central.JobProgress;
 import bndtools.preferences.BndPreferences;
 import bndtools.preferences.CompileErrorAction;
 
@@ -66,6 +67,7 @@ import bndtools.preferences.CompileErrorAction;
  * </pre>
  */
 public class BndtoolsBuilder extends IncrementalProjectBuilder {
+
     public static final String PLUGIN_ID = "bndtools.builder";
     public static final String BUILDER_ID = BndtoolsConstants.BUILDER_ID;
     private static final ILogger logger = Logger.getLogger(BndtoolsBuilder.class);
@@ -117,6 +119,7 @@ public class BndtoolsBuilder extends IncrementalProjectBuilder {
             if (model == null) {
                 try {
                     model = Central.getProject(myProject.getLocation().toFile());
+                    model.addBasicPlugin(new JobProgress());
                 } catch (Exception e) {
                     markers.deleteMarkers("*");
 

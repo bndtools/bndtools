@@ -212,6 +212,7 @@ public class Central implements IStartupParticipant {
             newWorkspace.addBasicPlugin(new WorkspaceListener(newWorkspace));
             newWorkspace.addBasicPlugin(instance.repoListenerTracker);
             newWorkspace.addBasicPlugin(getWorkspaceR5Repository());
+            newWorkspace.addBasicPlugin(new JobProgress());
 
             // Initialize projects in synchronized block
             newWorkspace.getBuildOrder();
