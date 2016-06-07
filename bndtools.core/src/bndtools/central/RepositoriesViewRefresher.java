@@ -2,9 +2,11 @@ package bndtools.central;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,6 +93,14 @@ public class RepositoriesViewRefresher implements RepositoryListenerPlugin {
 
                     ensureLoaded(monitor, repos);
 
+                    // get repositories first, then do UI thread work
+
+                    final Map<Entry<TreeViewer,RefreshModel>,List<RepositoryPlugin>> entryRepos = new HashMap<>();
+
+                    for (Map.Entry<TreeViewer,RefreshModel> entry : viewers.entrySet()) {
+                        entryRepos.put(entry, entry.getValue().getRepositories());
+                    }
+
                     //
                     // And now back to the UI thread
                     //
@@ -107,7 +117,7 @@ public class RepositoriesViewRefresher implements RepositoryListenerPlugin {
 
                                 TreePath[] expandedTreePaths = entry.getKey().getExpandedTreePaths();
 
-                                entry.getKey().setInput(entry.getValue().getRepositories());
+                                entry.getKey().setInput(entryRepos.get(entry));
                                 if (expandedTreePaths != null && expandedTreePaths.length > 0)
                                     entry.getKey().setExpandedTreePaths(expandedTreePaths);
                             }

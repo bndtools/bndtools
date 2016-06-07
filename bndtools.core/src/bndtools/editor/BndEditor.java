@@ -46,11 +46,13 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.IJobChangeEvent;
 import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
@@ -59,6 +61,7 @@ import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.forms.editor.IFormPage;
+import org.eclipse.ui.forms.widgets.ScrolledForm;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
@@ -89,7 +92,9 @@ import bndtools.preferences.BndPreferences;
 import bndtools.types.Pair;
 
 public class BndEditor extends ExtendedFormEditor implements IResourceChangeListener {
+
     private static final ILogger logger = Logger.getLogger(BndEditor.class);
+    private static final String SYNC_MESSAGE = "Workspace is loading, please wait...";
 
     public static final String WORKSPACE_EDITOR = "bndtools.bndWorkspaceConfigEditor";
 
@@ -360,6 +365,15 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
         updateIncludedPages();
 
         showHighestPriorityPage();
+
+        for (int i = 0; i < getPageCount(); i++) {
+            Control control = getControl(i);
+
+            if (control instanceof ScrolledForm) {
+                ScrolledForm form = (ScrolledForm) control;
+                form.setMessage(SYNC_MESSAGE, IMessageProvider.WARNING);
+            }
+        }
     }
 
     void showHighestPriorityPage() {
@@ -473,6 +487,18 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
         IDocument document = sourcePage.getDocumentProvider().getDocument(getEditorInput());
         model.loadFrom(new IDocumentWrapper(document));
         model.setBndResource(inputFile);
+
+        for (int i = 0; i < getPageCount(); i++) {
+            Control control = getControl(i);
+
+            if (control instanceof ScrolledForm) {
+                ScrolledForm form = (ScrolledForm) control;
+
+                if (SYNC_MESSAGE.equals(form.getMessage())) {
+                    form.setMessage(null, IMessageProvider.NONE);
+                }
+            }
+        }
     }
 
     private void initPages(IEditorSite site, IEditorInput input) throws PartInitException {
