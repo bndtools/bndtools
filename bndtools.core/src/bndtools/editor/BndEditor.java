@@ -66,6 +66,7 @@ import org.eclipse.ui.progress.UIJob;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.IElementStateListener;
 import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
+import org.osgi.util.function.Function;
 
 import aQute.bnd.build.Project;
 import aQute.bnd.build.Run;
@@ -443,11 +444,22 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
         setPartNameForInput(input);
         sourcePage.getDocumentProvider().addElementStateListener(new ElementStateListener());
 
-        try {
-            loadEditModel();
-        } catch (Exception e) {
-            throw new PartInitException(new Status(IStatus.ERROR, Plugin.PLUGIN_ID, 0, "Error loading bnd edit model", e));
-        }
+        Central.onWorkspaceInit(new Function<Workspace,Void>() {
+            @Override
+            public Void apply(Workspace a) {
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            loadEditModel();
+                        } catch (Exception e) {
+                            logger.logError("Error initializing workspace repository", e);
+                        }
+                    }
+                });
+                return null;
+            }
+        });
     }
 
     private void loadEditModel() throws Exception {

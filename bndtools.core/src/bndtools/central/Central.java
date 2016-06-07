@@ -18,7 +18,6 @@ import org.bndtools.api.ILogger;
 import org.bndtools.api.IStartupParticipant;
 import org.bndtools.api.Logger;
 import org.bndtools.api.ModelListener;
-import org.bndtools.utils.Function;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -42,6 +41,7 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.util.function.Function;
 
 import aQute.bnd.build.Project;
 import aQute.bnd.build.Workspace;
@@ -220,15 +220,17 @@ public class Central implements IStartupParticipant {
             // Monitor changes in cnf so we can refresh the workspace
             addCnfChangeListener(newWorkspace);
 
-            // The workspace has been initialized fully, set the field now
-            workspace = newWorkspace;
-
-            workspaceRepositoryChangeDetector = new WorkspaceRepositoryChangeDetector(workspace);
+            workspaceRepositoryChangeDetector = new WorkspaceRepositoryChangeDetector(newWorkspace);
 
             // Call the queued workspace init callbacks
-            while (!workspaceInitCallbackQueue.isEmpty()) {
-                Function<Workspace,Void> callback = workspaceInitCallbackQueue.remove(0);
-                callback.run(workspace);
+            synchronized (workspaceInitCallbackQueue) {
+                // The workspace has been initialized fully, set the field now
+                workspace = newWorkspace;
+
+                while (!workspaceInitCallbackQueue.isEmpty()) {
+                    Function<Workspace,Void> callback = workspaceInitCallbackQueue.remove(0);
+                    callback.apply(workspace);
+                }
             }
 
             return workspace;
@@ -240,11 +242,13 @@ public class Central implements IStartupParticipant {
         }
     }
 
-    public synchronized static void onWorkspaceInit(Function<Workspace,Void> callback) {
-        if (workspace != null)
-            callback.run(workspace);
-        else
-            workspaceInitCallbackQueue.add(callback);
+    public static void onWorkspaceInit(Function<Workspace,Void> callback) {
+        synchronized (workspaceInitCallbackQueue) {
+            if (workspace != null)
+                callback.apply(workspace);
+            else
+                workspaceInitCallbackQueue.add(callback);
+        }
     }
 
     private static File getWorkspaceDirectory() throws CoreException {

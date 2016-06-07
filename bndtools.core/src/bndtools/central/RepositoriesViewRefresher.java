@@ -17,6 +17,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.widgets.Display;
@@ -24,7 +25,9 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.util.function.Function;
 
+import aQute.bnd.build.Workspace;
 import aQute.bnd.osgi.Jar;
 import aQute.bnd.service.RepositoryListenerPlugin;
 import aQute.bnd.service.RepositoryPlugin;
@@ -156,9 +159,27 @@ public class RepositoriesViewRefresher implements RepositoryListenerPlugin {
         return Status.OK_STATUS;
     }
 
-    public void addViewer(TreeViewer viewer, RefreshModel model) {
+    public void addViewer(final TreeViewer viewer, final RefreshModel model) {
         this.viewers.put(viewer, model);
-        viewer.setInput(model.getRepositories());
+        Central.onWorkspaceInit(new Function<Workspace,Void>() {
+            @Override
+            public Void apply(Workspace a) {
+                new Job("Updating repositories") {
+                    @Override
+                    protected IStatus run(IProgressMonitor monitor) {
+                        final List<RepositoryPlugin> repositories = model.getRepositories();
+                        Display.getDefault().asyncExec(new Runnable() {
+                            @Override
+                            public void run() {
+                                viewer.setInput(repositories);
+                            }
+                        });
+                        return Status.OK_STATUS;
+                    }
+                }.schedule();
+                return null;
+            }
+        });
     }
 
     public void removeViewer(TreeViewer viewer) {
