@@ -457,7 +457,7 @@ public class RepositoriesView extends ViewPart implements RepositoriesViewRefres
                         try {
                             Central.refreshPlugins();
                         } catch (Exception e) {
-                            return new Status(Status.ERROR, Plugin.PLUGIN_ID, "Failed to refresh plugins");
+                            return new Status(Status.ERROR, Plugin.PLUGIN_ID, "Failed to refresh plugins", e);
                         }
                         return Status.OK_STATUS;
                     }
