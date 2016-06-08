@@ -64,6 +64,13 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
 
     public BndContainerInitializer() {
         super();
+        Central.onWorkspaceInit(new Function<Workspace,Void>() {
+            @Override
+            public Void apply(Workspace t) {
+                Central.getInstance().addModelListener(BndContainerInitializer.this);
+                return null;
+            }
+        });
     }
 
     @Override
@@ -72,7 +79,6 @@ public class BndContainerInitializer extends ClasspathContainerInitializer imple
             @Override
             public Void apply(Workspace a) {
                 try {
-                    Central.getInstance().addModelListener(BndContainerInitializer.this);
                     IProject project = javaProject.getProject();
 
                     Updater updater = new Updater(project, javaProject);
