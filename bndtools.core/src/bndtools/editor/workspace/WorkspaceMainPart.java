@@ -156,10 +156,10 @@ public class WorkspaceMainPart extends SectionPart {
                                 } else {
                                     createMissingExtsWarningPanel(contents, form.getToolkit(), extDir.getFullPath());
                                 }
-
-                                stackLayout.topControl = contents;
-                                container.layout();
                             }
+
+                            stackLayout.topControl = contents;
+                            container.layout();
                         } catch (Exception e) {
                             Plugin.error(Collections.singletonList(e.getMessage()));
                         }
