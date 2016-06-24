@@ -136,8 +136,19 @@
 			class="org.bndtools.builder.handlers.component.DSAnnotationErrorHandler" />
 	</extension>
 
+	<extension point="bndtools.core.buildErrorDetailsHandlers">
+		<handler
+			typeMatch="org.bndtools.builder.validate.ProjectPathsValidator$SourceFolderClasspathEntryInvalid"
+			class="org.bndtools.builder.handlers.bndpath.SourceFolderClasspathEntryProblemHandler" />
+	</extension>
+
 	<extension point="org.eclipse.ui.ide.markerResolution">
 		<markerResolutionGenerator markerType="bndtools.core.bndproblem"
+			class="org.bndtools.builder.BndtoolsMarkerResolutionGenerator" />
+	</extension>
+
+	<extension point="org.eclipse.ui.ide.markerResolution">
+		<markerResolutionGenerator markerType="bndtools.builder.bndpathproblem"
 			class="org.bndtools.builder.BndtoolsMarkerResolutionGenerator" />
 	</extension>
 	
