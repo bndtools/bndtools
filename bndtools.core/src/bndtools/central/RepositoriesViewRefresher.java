@@ -262,4 +262,16 @@ public class RepositoriesViewRefresher implements RepositoryListenerPlugin {
             }
         }.schedule();
     }
+
+    public void updateViewers() {
+        for (final TreeViewer viewer : viewers.keySet()) {
+            viewer.getTree().getDisplay().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    viewer.refresh();
+                }
+            });
+        }
+    }
 }
