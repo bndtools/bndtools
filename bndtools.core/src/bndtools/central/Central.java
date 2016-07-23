@@ -20,10 +20,7 @@ import org.bndtools.api.ModelListener;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
-import org.eclipse.core.resources.IResourceDelta;
-import org.eclipse.core.resources.IResourceDeltaVisitor;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -53,6 +50,7 @@ import aQute.bnd.osgi.Constants;
 import aQute.bnd.osgi.Processor;
 import aQute.bnd.service.Refreshable;
 import aQute.bnd.service.RepositoryPlugin;
+import bndtools.Plugin;
 import bndtools.central.RepositoriesViewRefresher.RefreshModel;
 
 public class Central implements IStartupParticipant {
@@ -66,6 +64,7 @@ public class Central implements IStartupParticipant {
 
     static WorkspaceR5Repository r5Repository = null;
 
+    private static IResourceChangeListener resourceChangeListener;
     private static Auxiliary auxiliary;
 
     static final AtomicBoolean indexValid = new AtomicBoolean(false);
@@ -204,37 +203,50 @@ public class Central implements IStartupParticipant {
             if (ws != null) { // early check for workspace
                 return ws;
             }
-            try {
-                Workspace.setDriver(Constants.BNDDRIVER_ECLIPSE);
-                Workspace.addGestalt(Constants.GESTALT_INTERACTIVE, new Attrs());
-
-                ws = Workspace.getWorkspace(getWorkspaceDirectory());
-
-                ws.addBasicPlugin(new WorkspaceListener(ws));
-                ws.addBasicPlugin(getInstance().repoListenerTracker);
-                ws.addBasicPlugin(getWorkspaceR5Repository());
-                ws.addBasicPlugin(new JobProgress());
-
-                // Initialize projects in synchronized block
-                ws.getBuildOrder();
-
-                // Monitor changes in cnf so we can refresh the workspace
-                addCnfChangeListener(ws);
-
-                workspaceRepositoryChangeDetector = new WorkspaceRepositoryChangeDetector(ws);
-
-                // The workspace has been initialized fully, set the field now
-                workspace = ws;
-            } catch (final Exception e) {
-                if (ws != null) {
-                    ws.close();
-                }
-                throw e;
-            }
+            ws = initializeWorkspace();
+            // The workspace has been initialized fully, set the field now
+            workspace = ws;
         }
-
         workspaceQueue.resolve(ws); // notify onWorkspaceInit callbacks
         return ws;
+    }
+
+    private static Workspace initializeWorkspace() throws Exception {
+        Workspace ws = null;
+        try {
+            Workspace.setDriver(Constants.BNDDRIVER_ECLIPSE);
+            Workspace.addGestalt(Constants.GESTALT_INTERACTIVE, new Attrs());
+
+            ws = new Workspace(getWorkspaceDirectory());
+
+            // Monitor changes in cnf so we can refresh the workspace
+            updateResourceChangeListener(ws);
+
+            ws.addBasicPlugin(new WorkspaceListener(ws));
+            ws.addBasicPlugin(getInstance().repoListenerTracker);
+            ws.addBasicPlugin(getWorkspaceR5Repository());
+            ws.addBasicPlugin(new JobProgress());
+
+            // Initialize projects in synchronized block
+            ws.getBuildOrder();
+
+            workspaceRepositoryChangeDetector = new WorkspaceRepositoryChangeDetector(ws);
+        } catch (final Exception e) {
+            if (ws != null) {
+                ws.close();
+            }
+            throw e;
+        }
+        return ws;
+    }
+
+    private static synchronized void updateResourceChangeListener(final Workspace workspace) {
+        if (resourceChangeListener == null) {
+            resourceChangeListener = new BndWorkspaceChangeListener(workspace);
+            ResourcesPlugin.getWorkspace().addResourceChangeListener(resourceChangeListener);
+        } else {
+            ((BndWorkspaceChangeListener) resourceChangeListener).setWorkspace(workspace);
+        }
     }
 
     public static void onWorkspaceInit(final Function<Workspace,Void> callback) {
@@ -242,7 +254,9 @@ public class Central implements IStartupParticipant {
         p.then(new Success<Workspace,Void>() {
             @Override
             public Promise<Void> call(Promise<Workspace> resolved) throws Exception {
-                callback.apply(resolved.getValue());
+                if (workspace != null) {
+                    callback.apply(resolved.getValue());
+                }
                 return null;
             }
         }).then(null, callbackFailure);
@@ -271,85 +285,6 @@ public class Central implements IStartupParticipant {
         // Have to assume that the eclipse workspace == the bnd workspace,
         // and cnf hasn't been imported yet.
         return eclipseWorkspace.getLocation().toFile();
-    }
-
-    private static void addCnfChangeListener(final Workspace workspace) {
-        ResourcesPlugin.getWorkspace().addResourceChangeListener(new IResourceChangeListener() {
-
-            @Override
-            public void resourceChanged(IResourceChangeEvent event) {
-                if (event.getType() != IResourceChangeEvent.POST_CHANGE)
-                    return;
-
-                IResourceDelta rootDelta = event.getDelta();
-                if (isCnfChanged(rootDelta)) {
-                    workspace.refresh();
-                }
-            }
-        });
-    }
-
-    private static boolean isCnfChanged(IResourceDelta delta) {
-
-        final AtomicBoolean result = new AtomicBoolean(false);
-        try {
-            delta.accept(new IResourceDeltaVisitor() {
-                @Override
-                public boolean visit(IResourceDelta delta) throws CoreException {
-                    try {
-
-                        if (!isChangeDelta(delta))
-                            return false;
-
-                        IResource resource = delta.getResource();
-                        if (resource.getType() == IResource.ROOT || resource.getType() == IResource.PROJECT && resource.getName().equals(Workspace.CNFDIR))
-                            return true;
-
-                        if (resource.getType() == IResource.PROJECT)
-                            return false;
-
-                        if (resource.getType() == IResource.FOLDER && resource.getName().equals("ext")) {
-                            result.set(true);
-                            return false;
-                        }
-
-                        if (resource.getType() == IResource.FILE) {
-                            if (Workspace.BUILDFILE.equals(resource.getName())) {
-                                result.set(true);
-                                return false;
-                            }
-                            // Check files included by the -include directive in build.bnd
-                            List<File> includedFiles = getWorkspace().getIncluded();
-                            if (includedFiles == null) {
-                                return false;
-                            }
-                            for (File includedFile : includedFiles) {
-                                IPath location = resource.getLocation();
-                                if (location != null && includedFile.equals(location.toFile())) {
-                                    result.set(true);
-                                    return false;
-                                }
-                            }
-                        }
-                        return true;
-                    } catch (Exception e) {
-                        throw new CoreException(new Status(Status.ERROR, BndtoolsConstants.CORE_PLUGIN_ID, "During checking project changes", e));
-                    }
-                }
-
-            });
-        } catch (CoreException e) {
-            logger.logError("Central.isCnfChanged() failed", e);
-        }
-        return result.get();
-    }
-
-    public static boolean isChangeDelta(IResourceDelta delta) {
-        if (IResourceDelta.MARKERS == delta.getFlags())
-            return false;
-        if ((delta.getKind() & (IResourceDelta.ADDED | IResourceDelta.CHANGED | IResourceDelta.REMOVED)) == 0)
-            return false;
-        return true;
     }
 
     public void changed(Project model) {
@@ -640,7 +575,6 @@ public class Central implements IStartupParticipant {
     /**
      * Register a viewer with repositories
      */
-
     public static void addRepositoriesViewer(TreeViewer viewer, RepositoriesViewRefresher.RefreshModel model) {
         repositoriesViewRefresher.addViewer(viewer, model);
     }
@@ -655,4 +589,58 @@ public class Central implements IStartupParticipant {
     public static void setRepositories(TreeViewer viewer, RefreshModel model) {
         repositoriesViewRefresher.setRepositories(viewer, model);
     }
+
+    public static void refreshRepositoriesViewers() {
+        repositoriesViewRefresher.updateViewers();
+    }
+
+    /**
+     * Called from {@link BndWorkspaceChangeListener}
+     */
+    synchronized static void resetBndWorkspace() {
+        Workspace newWorkspace = null;
+        try {
+            // close old Workspace
+            if (workspace != null) {
+                workspace.close();
+            }
+            newWorkspace = initializeWorkspace();
+            if (newWorkspace != null) {
+                workspace = newWorkspace;
+                workspaceQueue.resolve(newWorkspace);
+            } else {
+                // reset to null in order to correctly update the viewers
+                workspace = null;
+            }
+            Central.getInstance().javaProjectToModel.clear();
+            invalidateIndex();
+            refreshRepositoriesViewers();
+        } catch (Exception e) {
+            IStatus status = new Status(IStatus.ERROR, Plugin.PLUGIN_ID, "Error updating bnd-workspace", e);
+            Plugin.getDefault().getLog().log(status);
+            if (newWorkspace != null) {
+                newWorkspace.close();
+            }
+        }
+    }
+
+    /**
+     * Called from {@link BndWorkspaceChangeListener}
+     */
+    synchronized static void removeBndWorkspace() {
+        try {
+            // close old Workspace
+            if (workspace != null) {
+                workspace.close();
+            }
+            workspace = null;
+            Central.getInstance().javaProjectToModel.clear();
+            invalidateIndex();
+            refreshRepositoriesViewers();
+        } catch (Exception e) {
+            IStatus status = new Status(IStatus.ERROR, Plugin.PLUGIN_ID, "Error updating bnd-workspace", e);
+            Plugin.getDefault().getLog().log(status);
+        }
+    }
+
 }

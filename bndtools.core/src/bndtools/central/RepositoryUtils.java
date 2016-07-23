@@ -28,6 +28,9 @@ public class RepositoryUtils {
         Workspace workspace;
         try {
             workspace = Central.getWorkspace();
+            if (workspace == null) {
+                return Collections.emptyList();
+            }
         } catch (Exception e1) {
             return Collections.emptyList();
         }
@@ -39,7 +42,10 @@ public class RepositoryUtils {
             return Central.bndCall(new Callable<List<RepositoryPlugin>>() {
                 @Override
                 public List<RepositoryPlugin> call() throws Exception {
-                    List<RepositoryPlugin> plugins = localWorkspace.getPlugins(RepositoryPlugin.class);
+                    List<RepositoryPlugin> plugins = new ArrayList<>();
+                    if (localWorkspace != null) {
+                        plugins.addAll(localWorkspace.getPlugins(RepositoryPlugin.class));
+                    }
                     List<RepositoryPlugin> repos = new ArrayList<RepositoryPlugin>(plugins.size() + 1);
 
                     // Add the workspace repo if the provided workspace == the global bnd workspace
