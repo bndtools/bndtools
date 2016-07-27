@@ -6,17 +6,15 @@ import java.util.List;
 
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
-import org.eclipse.debug.core.sourcelookup.containers.ArchiveSourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.CompositeSourceContainer;
+import org.eclipse.debug.core.sourcelookup.containers.ExternalArchiveSourceContainer;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.sourcelookup.containers.JavaProjectSourceContainer;
@@ -24,7 +22,6 @@ import org.eclipse.jdt.launching.sourcelookup.containers.JavaProjectSourceContai
 import aQute.bnd.build.Container;
 import aQute.bnd.build.Container.TYPE;
 import aQute.bnd.build.Project;
-import bndtools.central.Central;
 import bndtools.launch.util.LaunchUtils;
 
 public class BndDependencySourceContainer extends CompositeSourceContainer {
@@ -78,14 +75,8 @@ public class BndDependencySourceContainer extends CompositeSourceContainer {
                             result.add(new JavaProjectSourceContainer(targetJavaProj));
                         }
                     } else if (runbundle.getType() == TYPE.REPO) {
-                        IPath bundlePath = Central.toPath(runbundle.getFile());
-                        if (bundlePath != null) {
-                            IFile bundleFile = ResourcesPlugin.getWorkspace().getRoot().getFile(bundlePath);
-                            if (bundleFile != null) {
-                                ArchiveSourceContainer tempArchiveCont = new ArchiveSourceContainer(bundleFile, false);
-                                result.add(tempArchiveCont);
-                            }
-                        }
+                        ExternalArchiveSourceContainer container = new ExternalArchiveSourceContainer(runbundle.getFile().toString(), false);
+                        result.add(container);
                     }
                 }
             }
