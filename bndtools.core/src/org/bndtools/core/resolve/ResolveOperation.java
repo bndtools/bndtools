@@ -14,6 +14,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.namespace.IdentityNamespace;
+import org.osgi.resource.Capability;
 import org.osgi.resource.Resource;
 import org.osgi.resource.Wire;
 import org.osgi.service.coordinator.Coordination;
@@ -64,6 +66,20 @@ public class ResolveOperation implements IRunnableWithProgress {
             ReporterLogService log = new ReporterLogService(model.getWorkspace());
             Map<Resource,List<Wire>> wirings = resolve.resolveRequired(model, model.getWorkspace(), bndResolver, callbacks, log);
 
+            // Add resources provided through wires implemented as fragments
+            for (List<Wire> wireList : new ArrayList<>(wirings.values())) {
+                for (Wire wire : wireList) {
+                    Resource provider = wire.getCapability().getResource();
+                    if (!wirings.containsKey(provider) && !isInitial(provider)) {
+                        wirings.put(provider, Collections.<Wire> emptyList());
+                    }
+                    Resource requirer = wire.getRequirement().getResource();
+                    if (!wirings.containsKey(requirer) && !isInitial(requirer)) {
+                        wirings.put(requirer, Collections.<Wire> emptyList());
+                    }
+                }
+            }
+
             Map<Resource,List<Wire>> optionalResources = new HashMap<Resource,List<Wire>>(resolve.getOptionalResources().size());
 
             for (Resource optional : resolve.getOptionalResources()) {
@@ -98,6 +114,17 @@ public class ResolveOperation implements IRunnableWithProgress {
 
     public ResolutionResult getResult() {
         return result;
+    }
+
+    private boolean isInitial(Resource resource) {
+        List<Capability> capabilities = resource.getCapabilities(IdentityNamespace.IDENTITY_NAMESPACE);
+        if (capabilities.isEmpty()) {
+            return false;
+        }
+        Capability capability = capabilities.get(0);
+        Map<String,Object> attributes = capability.getAttributes();
+        Object identity = attributes.get(IdentityNamespace.IDENTITY_NAMESPACE);
+        return "<<INITIAL>>".equals(identity);
     }
 
 }
