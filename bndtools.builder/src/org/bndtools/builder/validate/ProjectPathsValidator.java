@@ -34,6 +34,8 @@ import bndtools.central.Central;
 public class ProjectPathsValidator implements IValidator, IProjectValidator {
     final static IPath JRE_CONTAINER = new Path("org.eclipse.jdt.launching.JRE_CONTAINER");
 
+    public static class SourceFolderClasspathEntryInvalid {}
+
     /*
      * The parts of the test, needed to know what we missed
      */
@@ -148,6 +150,13 @@ public class ProjectPathsValidator implements IValidator, IProjectValidator {
                     File output = toFile(cpe.getOutputLocation());
                     if (output == null)
                         output = toFile(javaProject.getOutputLocation());
+                    else {
+                        File src = toFile(cpe.getPath());
+                        if (sourcePath.contains(src)) {
+                            model.warning("Bndtools: source folder classpath entry '" + cpe.getPath() + "' specifies custom output location. This will lead to debugger source lookup errors.")
+                                    .file(new File(model.getBase(), ".classpath").getAbsolutePath()).details(new SourceFolderClasspathEntryInvalid()).context(cpe.getPath().toString());
+                        }
+                    }
 
                     if (file.equals(testsrc)) {
                         //
