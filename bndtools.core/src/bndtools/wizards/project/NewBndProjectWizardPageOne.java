@@ -152,7 +152,7 @@ public class NewBndProjectWizardPageOne extends NewJavaProjectWizardPageOne {
         ProjectPaths projectPaths = ProjectPaths.DEFAULT;
 
         List<IClasspathEntry> newEntries = new ArrayList<IClasspathEntry>(2);
-        newEntries.add(JavaCore.newSourceEntry(projectPath.append(projectPaths.getSrc()), null, projectPath.append(projectPaths.getBin())));
+        newEntries.add(JavaCore.newSourceEntry(projectPath.append(projectPaths.getSrc()), null, null));
 
         boolean enableTestSrcDir;
         try {
