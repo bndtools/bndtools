@@ -3,6 +3,7 @@ package bndtools.launch;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.ILaunchConfiguration;
@@ -40,7 +41,7 @@ public class JUnitShortcut extends AbstractLaunchShortcut {
         try {
 
             //
-            // Check if a method is selected. It is more precise then the 
+            // Check if a method is selected. It is more precise then the
             // older next method that adapts the editor to a JavaElement
             // this in general returns a Compilation Unit
             //
@@ -70,12 +71,13 @@ public class JUnitShortcut extends AbstractLaunchShortcut {
     @Override
     protected void launchJavaElement(IJavaElement element, String mode) throws CoreException {
         IPath projectPath = element.getJavaProject().getProject().getFullPath().makeRelative();
+        IProject targetProject = element.getJavaProject().getProject();
 
         ILaunchConfiguration config = findLaunchConfig(projectPath);
         ILaunchConfigurationWorkingCopy wc = null;
 
         if (config == null) {
-            wc = createConfiguration(projectPath);
+            wc = createConfiguration(projectPath, targetProject);
         } else {
             wc = config.getWorkingCopy();
         }
@@ -88,11 +90,11 @@ public class JUnitShortcut extends AbstractLaunchShortcut {
     }
 
     /*
-     * From the Java element, we traverse over all the children of the given element 
-     * until we hit a Type. Types are then added if they are either a JUnit 3 
-     * (implements junit.framework.Test) or JUnit 4 (one of the methods has an org.junit 
+     * From the Java element, we traverse over all the children of the given element
+     * until we hit a Type. Types are then added if they are either a JUnit 3
+     * (implements junit.framework.Test) or JUnit 4 (one of the methods has an org.junit
      * annotation)
-     * 
+     *
      */
     private static void customise(IJavaElement element, ILaunchConfigurationWorkingCopy config) throws JavaModelException {
 
@@ -129,7 +131,7 @@ public class JUnitShortcut extends AbstractLaunchShortcut {
             break;
 
         /*
-         * Normally we do not traverse to methods but we can call the customise with a method 
+         * Normally we do not traverse to methods but we can call the customise with a method
          */
         case IJavaElement.METHOD : {
             IMethod method = (IMethod) element;
