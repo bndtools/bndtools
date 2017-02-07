@@ -24,7 +24,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
@@ -38,6 +37,7 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.eclipse.ui.forms.widgets.ScrolledForm;
 import org.eclipse.ui.forms.widgets.Section;
 import org.osgi.framework.Version;
 import org.osgi.framework.namespace.IdentityNamespace;
@@ -53,6 +53,7 @@ import aQute.bnd.osgi.resource.Filters;
 import aQute.libg.filters.AndFilter;
 import aQute.libg.filters.LiteralFilter;
 import aQute.libg.filters.SimpleFilter;
+import bndtools.editor.pages.ResizeExpansionAdapter;
 
 public class ResolutionSuccessPanel {
 
@@ -75,21 +76,19 @@ public class ResolutionSuccessPanel {
         this.model = model;
         this.presenter = presenter;
     }
-
+    
     public void createControl(Composite parent) {
         FormToolkit toolkit = new FormToolkit(parent.getDisplay());
-        composite = toolkit.createComposite(parent);
+        ScrolledForm form = toolkit.createScrolledForm(parent);
+        composite = form;
 
-        GridLayout layout = new GridLayout(1, false);
-        composite.setLayout(layout);
-
-        SashForm form = new SashForm(composite, SWT.VERTICAL);
-        form.setLayout(new GridLayout(1, false));
-        form.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
+        GridLayout layout = new GridLayout(1, true);
+        form.getBody().setLayout(new GridLayout(1, true));
+        form.getBody().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        
         GridData gd;
-
-        Section sectRequired = toolkit.createSection(form, Section.TITLE_BAR | Section.EXPANDED);
+        
+        Section sectRequired = toolkit.createSection(form.getBody(), Section.TWISTIE | Section.TITLE_BAR | Section.EXPANDED);
         sectRequired.setText("Required Resources");
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -120,7 +119,7 @@ public class ResolutionSuccessPanel {
             }
         });
 
-        sectOptional = toolkit.createSection(form, Section.TITLE_BAR | Section.TWISTIE | Section.EXPANDED);
+        sectOptional = toolkit.createSection(form.getBody(), Section.TITLE_BAR | Section.TWISTIE | Section.EXPANDED);
         sectOptional.setText("Optional Resources");
 
         Composite cmpOptional = toolkit.createComposite(sectOptional);
@@ -220,7 +219,7 @@ public class ResolutionSuccessPanel {
         });
         btnClearOptional.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
 
-        Section sectReason = toolkit.createSection(form, Section.TITLE_BAR | Section.TWISTIE | Section.EXPANDED);
+        Section sectReason = toolkit.createSection(form.getBody(), Section.TITLE_BAR | Section.TWISTIE | Section.EXPANDED);
         sectReason.setText("Reasons");
 
         Tree tblReasons = new Tree(sectReason, SWT.BORDER | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL);
@@ -234,6 +233,10 @@ public class ResolutionSuccessPanel {
         reasonsViewer = new TreeViewer(tblReasons);
         reasonsViewer.setContentProvider(reasonsContentProvider);
         reasonsViewer.setLabelProvider(new ResolutionTreeLabelProvider());
+        sectReason.addExpansionListener(new ResizeExpansionAdapter(sectReason));
+        sectOptional.addExpansionListener(new ResizeExpansionAdapter(sectOptional));
+        sectRequired.addExpansionListener(new ResizeExpansionAdapter(sectRequired));
+
     }
 
     public Control getControl() {
