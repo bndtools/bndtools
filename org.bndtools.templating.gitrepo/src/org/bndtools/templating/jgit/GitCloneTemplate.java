@@ -5,12 +5,14 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.bndtools.templating.FileResource;
 import org.bndtools.templating.FolderResource;
+import org.bndtools.templating.LinkResource;
 import org.bndtools.templating.ResourceMap;
 import org.bndtools.templating.Template;
 import org.bndtools.templating.util.ObjectClassDefinitionImpl;
@@ -204,7 +206,11 @@ public class GitCloneTemplate implements Template {
     }
 
     private static void recurse(String prefix, File file, FileFilter filter, ResourceMap resourceMap) {
-        if (file.isDirectory()) {
+        Path filePath = file.toPath();
+        if (Files.isSymbolicLink(filePath)) {
+            String path = prefix + file.getName();
+            resourceMap.put(path, new LinkResource(filePath));
+        } else if (file.isDirectory()) {
             String path = prefix + file.getName() + "/";
             resourceMap.put(path, new FolderResource());
 

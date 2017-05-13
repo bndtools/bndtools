@@ -118,6 +118,7 @@ public class MustacheTemplateEngine implements TemplateEngine {
                 Resource output;
                 switch (source.getType()) {
                 case Folder :
+                case Link :
                     output = source;
                     break;
                 case File :
@@ -132,7 +133,7 @@ public class MustacheTemplateEngine implements TemplateEngine {
                     }
                     break;
                 default :
-                    throw new IllegalArgumentException("Unknown resource type " + source.getType());
+                    throw new IllegalArgumentException("Unexpected resource type " + source.getType());
                 }
                 outputs.put(outputPath, output);
             }

@@ -1,11 +1,14 @@
 # This bundle separated from core as it has a dependency on JGit.
 
+
+
 -buildpath: \
 	${bndlib},\
 	bndtools.api; version=latest,\
 	org.bndtools.templating; version=latest,\
 	bndtools.utils; version=latest; packages=*,\
-	org.eclipse.jgit; version=3.4.2,\
+	org.eclipse.jgit; version=4.7.0,\
+	org.eclipse.jgit.java7; version=3.7.1,\
 	javaewah; version=0.7.9,\
 	com.jcraft.jsch; version=0.1.51,\
 	osgi.core;version=${osgi.core.version},\
@@ -17,9 +20,12 @@
 	org.eclipse.equinox.common,\
 	org.eclipse.core.commands
 
--privatepackage: org.bndtools.templating.jgit.*
+-privatepackage: \
+	org.bndtools.templating.jgit.*,\
+	org.eclipse.jgit.*
+
 -includeresource: resources
--conditionalpackage: aQute.lib.*, aQute.libg.*, org.bndtools.utils.*, org.eclipse.jgit.*, com.googlecode.javaewah
+-conditionalpackage: aQute.lib.*, aQute.libg.*, org.bndtools.utils.*, com.googlecode.javaewah
 
 Bundle-ActivationPolicy: lazy
 Bundle-SymbolicName: org.bndtools.templating.gitrepo; singleton:=true

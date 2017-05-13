@@ -120,6 +120,13 @@ public class WorkspaceSetupWizard extends Wizard implements INewWizard {
                             IO.copy(in, file);
                         }
                         break;
+                    case Link :
+                        File linkParentDir = file.getParentFile();
+                        Files.createDirectories(linkParentDir.toPath());
+                        String linkTargetPathStr = IO.collect(resource.getContent(), resource.getTextEncoding());
+                        Files.deleteIfExists(file.toPath());
+                        java.nio.file.Path linkPath = Files.createSymbolicLink(file.toPath(), new File(linkTargetPathStr).toPath());
+                        break;
                     default :
                         throw new IllegalArgumentException("Unknown resource type " + resource.getType());
                     }

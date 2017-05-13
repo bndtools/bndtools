@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -95,6 +97,8 @@ public class WorkspacePreviewPage extends WizardPage {
                         for (Entry<String,Resource> entry : templateOutputs.entries()) {
                             // Check for existing files
                             File file = new File(targetDir, entry.getKey());
+                            Path filePath = file.toPath();
+
                             switch (entry.getValue().getType()) {
                             case Folder :
                                 if (file.exists() && !file.isDirectory())
@@ -102,12 +106,24 @@ public class WorkspacePreviewPage extends WizardPage {
                                 break;
                             case File :
                                 if (file.exists() && !isEqualContent(file, entry.getValue().getContent())) {
-
                                     existingFiles.add(entry.getKey());
                                     if (!file.isFile())
                                         resourceErrors.put(entry.getKey(), String.format("Path already exists and is not a plain file: %s", entry.getKey()));
+                                    else if (Files.isSymbolicLink(filePath))
+                                        resourceErrors.put(entry.getKey(), String.format("Path already exists and is a symbolic link: %s", entry.getKey()));
                                 }
                                 break;
+                            case Link :
+                                if (file.exists()) {
+                                    if (!Files.isSymbolicLink(filePath)) {
+                                        resourceErrors.put(entry.getKey(), String.format("Path already exists and is not a symbolic link: %s", entry.getKey()));
+                                    } else {
+                                        String templateLinkTargetPathStr = IO.collect(entry.getValue().getContent(), entry.getValue().getTextEncoding());
+                                        String existingLinkTargetPathStr = Files.readSymbolicLink(filePath).toString();
+                                        if (!templateLinkTargetPathStr.equals(existingLinkTargetPathStr))
+                                            existingFiles.add(entry.getKey());
+                                    }
+                                }
                             default :
                                 // ignore
                             }
@@ -339,6 +355,7 @@ public class WorkspacePreviewPage extends WizardPage {
                             }
                         }
                     }
+
                 });
             }
         });

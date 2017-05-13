@@ -33,8 +33,10 @@ import org.bndtools.utils.workspace.FileUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
@@ -45,6 +47,7 @@ import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.ui.IWorkbench;
 
 import aQute.bnd.build.Project;
+import aQute.lib.io.IO;
 import bndtools.Plugin;
 
 class NewBndProjectWizard extends AbstractNewBndProjectWizard {
@@ -197,8 +200,14 @@ class NewBndProjectWizard extends AbstractNewBndProjectWizard {
                         file.setCharset(resource.getTextEncoding(), progress.newChild(1));
                     }
                     break;
+                case Link :
+                    IFile linkFile = project.getFile(path);
+                    String linkTarget = IO.collect(resource.getContent(), resource.getTextEncoding());
+                    FileUtils.mkdirs(linkFile.getParent(), progress.newChild(1, SubMonitor.SUPPRESS_ALL_LABELS));
+                    linkFile.createLink(new Path(linkTarget), IResource.ALLOW_MISSING_LOCAL, progress.newChild(1, SubMonitor.SUPPRESS_ALL_LABELS));
+                    break;
                 default :
-                    throw new IllegalArgumentException("Unknown resource type " + resource.getType());
+                    throw new IllegalArgumentException("Unexpected resource type " + resource.getType());
                 }
             }
         } catch (Exception e) {

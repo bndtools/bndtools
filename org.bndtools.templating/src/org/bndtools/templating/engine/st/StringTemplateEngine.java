@@ -146,7 +146,7 @@ public class StringTemplateEngine implements TemplateEngine {
             Resource output;
 
             if (settings.ignore == null || !settings.ignore.matches(sourceName)) {
-                if (source.getType() == ResourceType.Folder) {
+                if (source.getType() == ResourceType.Folder || source.getType() == ResourceType.Link) {
                     output = source;
                 } else if (settings.preprocessMatch.matches(sourceName)) {
                     // This file is a candidate for preprocessing with ST
