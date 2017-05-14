@@ -43,6 +43,7 @@ on GitHub. All contributions are made as commits to your fork. Then you submit a
 pull request to have them considered for merging into the main bndtools repo.
 
 ### Setting up the triangular workflow
+Replace the <github-user> with your GitHub user.
 
 After forking the main bndtools repo on GitHub, you can clone the main repo to your system:
 
@@ -52,7 +53,7 @@ This will clone the main repo to a local repo on your disk and set up the `origi
 Next you will set up the the second side of the triangle to your fork repo.
 
     cd bndtools
-    git remote add fork git@github.com:github-user/bndtools.git
+    git remote add fork https://<github-user>@github.com/<github-user>/bndtools.git
 
 Make sure to replace the URL with the SSH URL to your fork repo on GitHub. Then we configure
 the local repo to push your commits to the fork repo.
