@@ -23,10 +23,12 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.osgi.framework.Constants;
 
 import aQute.bnd.build.Project;
+import aQute.bnd.build.Workspace;
 import aQute.bnd.differ.Baseline.BundleInfo;
 import aQute.bnd.osgi.Builder;
 import aQute.lib.io.IO;
 import aQute.service.reporter.Report.Location;
+import bndtools.central.Central;
 
 public class BundleVersionErrorHandler extends AbstractBuildErrorDetailsHandler {
 
@@ -58,6 +60,32 @@ public class BundleVersionErrorHandler extends AbstractBuildErrorDetailsHandler 
                     // Not found in sub-bundle file, try bnd.bnd
                     bndFile = project.getFile(Project.BNDFILE);
                     loc = findBundleVersionHeader(bndFile);
+                }
+
+                if (loc == null) {
+                    // Not found in bnd.bnd, try build.bnd
+                    bndFile = Central.getWorkspaceBuildFile();
+                    loc = findBundleVersionHeader(bndFile);
+                }
+
+                if (loc == null) {
+                    // Not found in build.bnd, try ext folder
+                    File extDir = new File(Central.getWorkspace().getBuildDir(), Workspace.EXT);
+                    File[] extensions = extDir.listFiles();
+                    if (extensions != null) {
+                        for (File extension : extensions) {
+                            if (!extension.isFile()) {
+                                continue;
+                            }
+                            String extensionName = extension.getName();
+                            if (extensionName.endsWith(".bnd")) {
+                                loc = findBundleVersionHeader((IFile) Central.toResource(extension));
+                                if (loc != null) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (loc != null) {
