@@ -93,14 +93,18 @@ public class ComponentMarker {
     }
 
     public static void updateComponentDecorators() {
-        Display.getDefault().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                IDecoratorManager idm = PlatformUI.getWorkbench().getDecoratorManager();
-                idm.update("bndtools.componentDecorator");
-                idm.update("bndtools.componentPackageDecorator");
-            }
-        });
+        Display display = Display.getDefault();
+
+        if (display != null) {
+            display.asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    IDecoratorManager idm = PlatformUI.getWorkbench().getDecoratorManager();
+                    idm.update("bndtools.componentDecorator");
+                    idm.update("bndtools.componentPackageDecorator");
+                }
+            });
+        }
     }
 
     private static void parseChildrenForComponents(IPackageFragment pkg) throws JavaModelException, CoreException {
