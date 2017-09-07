@@ -6,15 +6,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import aQute.bnd.http.HttpClient;
 import aQute.bnd.service.RepositoryPlugin;
 import aQute.lib.io.IO;
 
 public class RepoPluginsBundleLocator implements BundleLocator {
 
     private final List<RepositoryPlugin> plugins;
+    private final HttpClient httpClient;
 
-    public RepoPluginsBundleLocator(List<RepositoryPlugin> plugins) {
+    public RepoPluginsBundleLocator(List<RepositoryPlugin> plugins, HttpClient httpClient) {
         this.plugins = plugins;
+        this.httpClient = httpClient;
     }
 
     @Override
@@ -39,7 +42,11 @@ public class RepoPluginsBundleLocator implements BundleLocator {
         File tempFile = File.createTempFile("download", "jar");
         tempFile.deleteOnExit();
 
-        IO.copy(location.toURL(), tempFile);
+        if (httpClient != null) {
+            IO.copy(httpClient.connect(location.toURL()), tempFile);
+        } else {
+            IO.copy(location.toURL(), tempFile);
+        }
         return tempFile;
     }
 
