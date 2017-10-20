@@ -1,10 +1,9 @@
 package org.bndtools.core.templating.repobased;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,10 +36,12 @@ import org.osgi.util.promise.Promises;
 import org.osgi.util.promise.Success;
 
 import aQute.bnd.build.Workspace;
-import aQute.bnd.deployer.repository.FixedIndexedRepo;
+import aQute.bnd.http.HttpClient;
 import aQute.bnd.osgi.resource.CapReqBuilder;
 import aQute.bnd.osgi.resource.ResourceUtils;
 import aQute.bnd.osgi.resource.ResourceUtils.IdentityCapability;
+import aQute.bnd.repository.osgi.OSGiRepository;
+import aQute.bnd.service.RepositoryPlugin;
 import aQute.service.reporter.Reporter;
 import bndtools.central.Central;
 import bndtools.preferences.BndPreferences;
@@ -95,7 +96,7 @@ public class ReposTemplateLoader implements TemplateLoader {
             if (workspace == null)
                 workspace = Central.getWorkspace();
             workspaceRepos = workspace.getPlugins(Repository.class);
-            tmpLocator = new RepoPluginsBundleLocator(workspace.getRepositories());
+            tmpLocator = new RepoPluginsBundleLocator(workspace.getPlugins(RepositoryPlugin.class), workspace.getPlugin(HttpClient.class));
         } catch (Exception e) {
             workspaceRepos = Collections.emptyList();
             tmpLocator = new DirectDownloadBundleLocator();
@@ -161,7 +162,7 @@ public class ReposTemplateLoader implements TemplateLoader {
         return accumulator;
     }
 
-    private static void addPreferenceConfiguredRepos(List<Repository> repos, Reporter reporter) {
+    private void addPreferenceConfiguredRepos(List<Repository> repos, Reporter reporter) {
         BndPreferences bndPrefs = null;
         try {
             bndPrefs = new BndPreferences();
@@ -172,23 +173,30 @@ public class ReposTemplateLoader implements TemplateLoader {
         if (bndPrefs != null && bndPrefs.getEnableTemplateRepo()) {
             List<String> repoUris = bndPrefs.getTemplateRepoUriList();
             try {
-                FixedIndexedRepo prefsRepo = loadRepo(repoUris);
+                OSGiRepository prefsRepo = loadRepo(repoUris, reporter);
                 repos.add(prefsRepo);
-            } catch (IOException | URISyntaxException ex) {
+            } catch (Exception ex) {
                 reporter.exception(ex, "Error loading preference repository: %s", repoUris);
             }
         }
     }
 
-    private static FixedIndexedRepo loadRepo(List<String> uris) throws IOException, URISyntaxException {
-        FixedIndexedRepo repo = new FixedIndexedRepo();
+    private OSGiRepository loadRepo(List<String> uris, Reporter reporter) throws Exception {
+        OSGiRepository repo = new OSGiRepository();
+        repo.setReporter(reporter);
+        repo.setRegistry(workspace);
+
         StringBuilder sb = new StringBuilder();
         for (Iterator<String> iter = uris.iterator(); iter.hasNext();) {
             sb.append(iter.next());
             if (iter.hasNext())
                 sb.append(',');
         }
-        repo.setLocations(sb.toString());
+
+        Map<String,String> properties = new HashMap<>();
+        properties.put("name", "bndtools-preferences-template-repos");
+        properties.put("locations", sb.toString());
+        repo.setProperties(properties);
         return repo;
     }
 
