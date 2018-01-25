@@ -121,6 +121,9 @@ public class ReposTemplateLoader implements TemplateLoader {
         // Map List<Repository> to Promise<List<Template>>
         Promise<List<Template>> promise = repos.stream().map(repo -> promiseFactory.submit(() -> {
             Map<Requirement,Collection<Capability>> providerMap = repo.findProviders(Collections.singleton(requirement));
+            if (!providerMap.containsKey(requirement)) {
+                return Collections.<Template> emptyList();
+            }
             return providerMap.get(requirement).stream().map(cap -> {
                 IdentityCapability idcap = ResourceUtils.getIdentityCapability(cap.getResource());
                 Object id = idcap.getAttributes().get(IdentityNamespace.IDENTITY_NAMESPACE);
