@@ -95,7 +95,9 @@ import bndtools.editor.model.IDocumentWrapper;
 import bndtools.editor.pages.BundleContentPage;
 import bndtools.editor.pages.BundleDescriptionPage;
 import bndtools.editor.pages.ProjectBuildPage;
+import bndtools.editor.pages.ProjectRepositoriesPage;
 import bndtools.editor.pages.ProjectRunPage;
+import bndtools.editor.pages.ProjectRuntimePage;
 import bndtools.editor.pages.TestSuitesPage;
 import bndtools.editor.pages.WorkspacePage;
 import bndtools.launch.LaunchConstants;
@@ -119,6 +121,10 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
     public static final String PROJECT_RUN_PAGE = "__project_run_page";
     public static final String BNDRUN_PAGE = "__bndrun_page";
     public static final String TEST_SUITES_PAGE = "__test_suites_page";
+    public static final String BND_REPOS_PAGE = "__bnd_repos_page";
+    public static final String PROJECT_REPOS_PAGE = "__project_repos_page";
+    public static final String BND_RUNTIME_PAGE = "__bnd_runtime_page";
+    public static final String PROJECT_RUNTIME_PAGE = "__project_runtime_page";
 
     private final BndEditModel model = new BndEditModel();
 
@@ -631,6 +637,10 @@ public class BndEditor extends ExtendedFormEditor implements IResourceChangeList
         pageFactories.put(BUILD_PAGE, ProjectBuildPage.FACTORY);
         pageFactories.put(PROJECT_RUN_PAGE, ProjectRunPage.FACTORY_PROJECT);
         pageFactories.put(BNDRUN_PAGE, ProjectRunPage.FACTORY_BNDRUN);
+        pageFactories.put(BND_REPOS_PAGE, ProjectRepositoriesPage.FACTORY_BNDRUN);
+        pageFactories.put(PROJECT_REPOS_PAGE, ProjectRepositoriesPage.FACTORY_PROJECT);
+        pageFactories.put(BND_RUNTIME_PAGE, ProjectRuntimePage.FACTORY_BNDRUN);
+        pageFactories.put(PROJECT_RUNTIME_PAGE, ProjectRuntimePage.FACTORY_PROJECT);
         pageFactories.put(TEST_SUITES_PAGE, TestSuitesPage.FACTORY);
 
         IConfigurationElement[] configElems = Platform.getExtensionRegistry().getConfigurationElementsFor(Plugin.PLUGIN_ID, "editorPages");

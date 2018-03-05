@@ -28,11 +28,9 @@ import bndtools.Plugin;
 import bndtools.central.Central;
 import bndtools.editor.common.MDSashForm;
 import bndtools.editor.project.AvailableBundlesPart;
-import bndtools.editor.project.RepositorySelectionPart;
 import bndtools.editor.project.RunBlacklistPart;
 import bndtools.editor.project.RunBundlesPart;
 import bndtools.editor.project.RunFrameworkPart;
-import bndtools.editor.project.RunPropertiesPart;
 import bndtools.editor.project.RunRequirementsPart;
 import bndtools.utils.MessageHyperlinkAdapter;
 
@@ -140,14 +138,6 @@ public class ProjectRunPage extends FormPage {
         gl = new GridLayout(1, true);
         right.setLayout(gl);
 
-        // First column
-        RepositorySelectionPart reposPart = new RepositorySelectionPart(getEditor(), left, tk, Section.TITLE_BAR | Section.TWISTIE);
-        managedForm.addPart(reposPart);
-        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.widthHint = 50;
-        gd.heightHint = 50;
-        reposPart.getSection().setLayoutData(PageLayoutUtils.createCollapsed());
-
         AvailableBundlesPart availableBundlesPart = new AvailableBundlesPart(left, tk, Section.TITLE_BAR | Section.EXPANDED);
         managedForm.addPart(availableBundlesPart);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -159,11 +149,6 @@ public class ProjectRunPage extends FormPage {
         managedForm.addPart(runFwkPart);
         gd = new GridData(SWT.FILL, SWT.FILL, true, false);
         runFwkPart.getSection().setLayoutData(gd);
-
-        RunPropertiesPart runPropertiesPart = new RunPropertiesPart(left, tk, Section.TITLE_BAR | Section.TWISTIE);
-        managedForm.addPart(runPropertiesPart);
-        gd = new GridData(SWT.FILL, SWT.FILL, true, false);
-        runPropertiesPart.getSection().setLayoutData(gd);
 
         // SECOND COLUMN
         if (supportsResolve) {
