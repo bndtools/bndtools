@@ -22,10 +22,20 @@ Installing Bndtools
 
 Please refer to the [Installation Instructions](installation.html).
 
+Create a Workspace Project (cnf)
+================================
+
+First we need to create a a Workspace Project. It will be named "cnf".
+
+1. From the File menu, select **New -&gt; Other -&gt; Bndtools -&gt; Bnd OSGi Workspace**.
+1. Next >
+1. Choose **GitHub -&gt; bndtools/workspace** (not osgi/workspace)
+
+
 Create an API Project
 =====================
 
-First we need to create a Bndtools OSGi Project. This is just a standard Eclipse Java Project, with an additional builder for constructing OSGi bundles.
+Now we can create a Bndtools OSGi Project. This is just a standard Eclipse Java Project, with an additional builder for constructing OSGi bundles.
 
 1. From the File menu, select **New -> Bndtools OSGi Project**.
 
