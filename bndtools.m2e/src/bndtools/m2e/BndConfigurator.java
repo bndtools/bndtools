@@ -28,11 +28,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.m2e.core.MavenPlugin;
-import org.eclipse.m2e.core.embedder.ICallable;
 import org.eclipse.m2e.core.embedder.IMaven;
-import org.eclipse.m2e.core.embedder.IMavenExecutionContext;
-import org.eclipse.m2e.core.internal.MavenPluginActivator;
-import org.eclipse.m2e.core.internal.project.registry.ProjectRegistryManager;
 import org.eclipse.m2e.core.lifecyclemapping.model.IPluginExecutionMetadata;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
@@ -47,6 +43,7 @@ import org.osgi.service.component.annotations.Reference;
 import aQute.bnd.osgi.Analyzer;
 import aQute.bnd.osgi.Jar;
 import aQute.bnd.osgi.Packages;
+import bndtools.central.Central;
 
 public class BndConfigurator extends AbstractProjectConfigurator {
 
@@ -175,19 +172,13 @@ public class BndConfigurator extends AbstractProjectConfigurator {
         return mavenProject;
     }
 
-    private void execJarMojo(final IMavenProjectFacade projectFacade, IProgressMonitor monitor) throws CoreException {
+    private void execJarMojo(final IMavenProjectFacade projectFacade, IProgressMonitor monitor) {
         final IMaven maven = MavenPlugin.getMaven();
-        ProjectRegistryManager projectRegistryManager = MavenPluginActivator.getDefault()
-            .getMavenProjectManagerImpl();
-
         ResolverConfiguration resolverConfiguration = new ResolverConfiguration();
         resolverConfiguration.setResolveWorkspaceProjects(true);
 
-        IMavenExecutionContext context = projectRegistryManager.createExecutionContext(projectFacade.getPom(), resolverConfiguration);
-
-        context.execute(new ICallable<Void>() {
-            @Override
-            public Void call(IMavenExecutionContext context, IProgressMonitor monitor) throws CoreException {
+        Central.promiseFactory()
+            .submit(() -> {
                 SubMonitor progress = SubMonitor.convert(monitor);
                 MavenProject mavenProject = getMavenProject(projectFacade, progress.newChild(1));
 
@@ -200,21 +191,20 @@ public class BndConfigurator extends AbstractProjectConfigurator {
                     }
                 }
 
-                // We can now decorate based on the build we just did.
-                try {
-                    IProjectDecorator decorator = Injector.ref.get();
-                    if (decorator != null) {
-                        BndProjectInfo info = new MavenProjectInfo(mavenProject);
-                        decorator.updateDecoration(projectFacade.getProject(), info);
-                    }
-                } catch (Exception e) {
-                    logger.logError("Failed to decorate project " + projectFacade.getProject()
-                        .getName(), e);
-                }
-
-                return null;
-            }
-        }, monitor);
+                return Central.promiseFactory()
+                    .submit(() -> {
+                        IProjectDecorator decorator = Injector.ref.get();
+                        if (decorator != null) {
+                            BndProjectInfo info = new MavenProjectInfo(mavenProject);
+                            decorator.updateDecoration(projectFacade.getProject(), info);
+                        }
+                        return null;
+                    })
+                    .onFailure(exception -> {
+                        logger.logError("Failed to decorate project " + projectFacade.getProject()
+                            .getName(), exception);
+                    });
+            });
     }
 
     @Component
