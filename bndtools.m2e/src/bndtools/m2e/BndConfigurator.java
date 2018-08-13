@@ -9,12 +9,15 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.maven.lifecycle.MavenExecutionPlan;
+import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.project.MavenProject;
 import org.bndtools.api.ILogger;
 import org.bndtools.api.Logger;
 import org.bndtools.build.api.IProjectDecorator;
 import org.bndtools.build.api.IProjectDecorator.BndProjectInfo;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
@@ -107,6 +110,34 @@ public class BndConfigurator extends AbstractProjectConfigurator {
     @Override
     public void configure(ProjectConfigurationRequest request, IProgressMonitor monitor) throws CoreException {}
 
+    private String getBundleFileName(final MavenProject mavenProject) {
+        String finalName = null;
+
+        // first check maven-jar-plugin config first, if it is empty use project.build.finalName
+        Plugin jarPlugin = mavenProject.getPlugin("org.apache.maven.plugins:maven-jar-plugin");
+
+        if (jarPlugin != null) {
+            Object config = jarPlugin.getConfiguration();
+
+            if (config instanceof Xpp3Dom) {
+                Xpp3Dom dom = (Xpp3Dom) config;
+
+                Xpp3Dom finalNameNode = dom.getChild("finalName");
+
+                if (finalNameNode != null) {
+                    finalName = finalNameNode.getValue();
+                }
+            }
+        }
+
+        if (finalName == null) {
+            finalName = mavenProject.getBuild()
+                .getFinalName();
+        }
+
+        return finalName + ".jar";
+    }
+
     @Override
     public AbstractBuildParticipant getBuildParticipant(final IMavenProjectFacade projectFacade, MojoExecution execution, IPluginExecutionMetadata executionMetadata) {
         return new MojoExecutionBuildParticipant(execution, true, true) {
@@ -146,20 +177,13 @@ public class BndConfigurator extends AbstractProjectConfigurator {
                         IPath projectPath = project.getLocation();
                         IPath relativeBuildDirPath = buildDirPath.makeRelativeTo(projectPath);
                         IFolder buildDir = project.getFolder(relativeBuildDirPath);
-
-                        if (buildDir != null) {
-                            // TODO: there *may* be a remaining issue here if a source-generation plugin gets triggered
-                            // by the above invocation of the jar:jar goal.
-                            // This could cause Eclipse to think that the Java sources are dirty and queue the project
-                            // for rebuilding, thus entering an infinite loop.
-                            // One solution would be to find the output artifact jar and refresh ONLY that. However we
-                            // have not been able to create the condition we
-                            // are worried about so we are deferring any extra work on this until it's shown to be a
-                            // real problem.
-                            buildDir.refreshLocal(IResource.DEPTH_INFINITE, progress.newChild(1));
+			String bundleFileName = getBundleFileName(mvnProject);
+                        IFile targetFile = buildDir != null ? buildDir.getFile(bundleFileName) : null;
+                        if (targetFile != null) {                        
+                            targetFile.refreshLocal(IResource.DEPTH_INFINITE, progress.newChild(1));
                         } else {
                             Logger.getLogger(BndConfigurator.class)
-                                .logError(String.format("Project build folder '%s' does not exist, or is not a child of the project path '%s'", buildDirPath, projectPath), null);
+                                .logError(String.format("Project target JAR '%s/%s' does not exist, or is not a child of the project path '%s'", buildDirPath, bundleFileName, projectPath), null);
                             progress.worked(1);
                         }
 
