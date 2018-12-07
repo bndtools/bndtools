@@ -125,7 +125,7 @@ public class BndConfigurator extends AbstractProjectConfigurator {
 
                 if (imarkers != null && Arrays.stream(imarkers)
                     .map(m -> m.getAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO))
-                    .anyMatch(s -> s == IMarker.SEVERITY_ERROR)) {
+                    .anyMatch(s -> s >= IMarker.SEVERITY_WARNING)) {
                     // there are compile errors, don't build jar
                     return build;
                 }
